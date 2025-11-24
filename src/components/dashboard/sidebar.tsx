@@ -12,7 +12,7 @@ import {
     Menu,
     X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,19 @@ const sidebarLinks = [
 export function Sidebar({ userEmail }: { userEmail?: string }) {
     const pathname = usePathname();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        const checkDesktop = () => {
+            setIsDesktop(window.innerWidth >= 1024);
+        };
+
+        checkDesktop();
+        window.addEventListener('resize', checkDesktop);
+
+        return () => window.removeEventListener('resize', checkDesktop);
+    }, []);
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -63,7 +75,7 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
 
             {/* Sidebar Container */}
             <AnimatePresence mode="wait">
-                {(isMobileOpen || typeof window !== "undefined" && window.innerWidth >= 1024) && (
+                {(isMobileOpen || isDesktop) && (
                     <motion.aside
                         initial={{ x: -300 }}
                         animate={{ x: 0 }}

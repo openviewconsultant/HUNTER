@@ -1,6 +1,14 @@
 -- Enable pgvector extension for embeddings
 create extension if not exists vector;
 
+-- Reset tables if they exist (Order matters due to foreign keys)
+drop table if exists public.saved_searches cascade;
+drop table if exists public.tenders cascade;
+drop table if exists public.profiles cascade;
+
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user();
+
 -- Profiles table
 create table public.profiles (
   id uuid default gen_random_uuid() primary key,

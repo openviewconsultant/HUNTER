@@ -1,14 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Upload, FileText, DollarSign, ShieldCheck, Plus } from "lucide-react";
+import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-const documentCategories = [
-    {
-        id: "legal",
+const tabs = [
+    { id: "info", label: "Información de la Empresa", icon: Building2 },
+    { id: "legal", label: "Documentos Legales", icon: ShieldCheck },
+    { id: "financial", label: "Información Financiera", icon: DollarSign },
+    { id: "technical", label: "Experiencia Técnica", icon: FileText },
+];
+
+const documentCategories = {
+    legal: {
         title: "Documentos Legales",
-        icon: ShieldCheck,
         description: "RUT, Cámara de Comercio, Representación Legal",
         documents: [
             { name: "RUT Actualizado", required: true },
@@ -16,10 +22,8 @@ const documentCategories = [
             { name: "Cédula Representante Legal", required: true },
         ],
     },
-    {
-        id: "financial",
+    financial: {
         title: "Información Financiera",
-        icon: DollarSign,
         description: "Estados Financieros, Declaraciones de Renta",
         documents: [
             { name: "Estados Financieros 2023", required: true },
@@ -27,19 +31,18 @@ const documentCategories = [
             { name: "Certificado Bancario", required: false },
         ],
     },
-    {
-        id: "technical",
+    technical: {
         title: "Experiencia Técnica",
-        icon: FileText,
         description: "Certificados de contratos ejecutados",
         documents: [
             { name: "RUP (Registro Único de Proponentes)", required: true },
             { name: "Certificados de Experiencia", required: false },
         ],
     },
-];
+};
 
 export default function CompanyProfilePage() {
+    const [activeTab, setActiveTab] = useState("info");
     const [dragActive, setDragActive] = useState(false);
 
     const handleDrag = (e: React.DragEvent) => {
@@ -57,7 +60,6 @@ export default function CompanyProfilePage() {
         e.stopPropagation();
         setDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            // Handle file upload
             console.log("File dropped:", e.dataTransfer.files[0]);
         }
     };
@@ -71,29 +73,109 @@ export default function CompanyProfilePage() {
                 </p>
             </div>
 
+            {/* Tab Navigation */}
+            <div className="border-b border-white/10">
+                <div className="flex gap-1 overflow-x-auto">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                                "flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                                activeTab === tab.id
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                            )}
+                        >
+                            <tab.icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Tab Content */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Document Categories */}
-                <div className="space-y-6">
-                    {documentCategories.map((category, index) => (
+                <div>
+                    {activeTab === "info" && (
                         <motion.div
-                            key={category.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="p-6 rounded-2xl bg-zinc-900/50 border border-white/10 hover:border-primary/20 transition-colors"
+                            className="p-6 rounded-2xl bg-zinc-900/50 border border-white/10"
+                        >
+                            <h3 className="text-xl font-semibold text-white mb-6">Información General</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                        Nombre de la Empresa
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej. Tech Solutions SAS"
+                                        className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                        NIT
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="900.123.456-7"
+                                        className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                        Representante Legal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Juan Pérez"
+                                        className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                        Sector / Actividad Económica
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Tecnología, Construcción, etc."
+                                        className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/50"
+                                    />
+                                </div>
+                                <button className="w-full h-12 rounded-lg bg-primary text-black font-semibold hover:bg-primary/90 transition-colors mt-6">
+                                    Guardar Información
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab !== "info" && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-6 rounded-2xl bg-zinc-900/50 border border-white/10"
                         >
                             <div className="flex items-start gap-4 mb-6">
                                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                    <category.icon className="w-5 h-5 text-primary" />
+                                    {activeTab === "legal" && <ShieldCheck className="w-5 h-5 text-primary" />}
+                                    {activeTab === "financial" && <DollarSign className="w-5 h-5 text-primary" />}
+                                    {activeTab === "technical" && <FileText className="w-5 h-5 text-primary" />}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-white">{category.title}</h3>
-                                    <p className="text-sm text-zinc-400">{category.description}</p>
+                                    <h3 className="text-lg font-semibold text-white">
+                                        {documentCategories[activeTab as keyof typeof documentCategories]?.title}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        {documentCategories[activeTab as keyof typeof documentCategories]?.description}
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                {category.documents.map((doc, i) => (
+                                {documentCategories[activeTab as keyof typeof documentCategories]?.documents.map((doc, i) => (
                                     <div
                                         key={i}
                                         className="flex items-center justify-between p-3 rounded-lg bg-black/40 border border-white/5"
@@ -114,7 +196,7 @@ export default function CompanyProfilePage() {
                                 ))}
                             </div>
                         </motion.div>
-                    ))}
+                    )}
                 </div>
 
                 {/* Upload Area */}
@@ -124,13 +206,12 @@ export default function CompanyProfilePage() {
                         onDragLeave={handleDrag}
                         onDragOver={handleDrag}
                         onDrop={handleDrop}
-                        className={`
-              relative p-8 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[400px]
-              ${dragActive
+                        className={cn(
+                            "relative p-8 rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[400px]",
+                            dragActive
                                 ? "border-primary bg-primary/5"
                                 : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700"
-                            }
-            `}
+                        )}
                     >
                         <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-6 shadow-xl">
                             <Upload className="w-8 h-8 text-zinc-400" />
