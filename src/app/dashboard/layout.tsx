@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { Navbar } from "@/components/dashboard/navbar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -37,11 +38,15 @@ export default async function DashboardLayout({
             </div>
 
             <Sidebar userEmail={user.email} userName={profile?.full_name} />
-            <main className="flex-1 lg:pl-64 min-h-screen transition-all duration-300">
-                <div className="container mx-auto p-4 md:p-8 pt-20 lg:pt-8">
-                    {children}
-                </div>
-            </main>
+
+            <div className="flex-1 flex flex-col min-h-screen lg:ml-64 transition-all duration-300">
+                <Navbar userName={profile?.full_name} userEmail={user.email} />
+                <main className="flex-1">
+                    <div className="container mx-auto p-4 md:p-8">
+                        {children}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }

@@ -11,12 +11,13 @@ import {
     LogOut,
     Menu,
     X,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const sidebarLinks = [
     {
@@ -44,6 +45,7 @@ const sidebarLinks = [
 export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?: string | null }) {
     const pathname = usePathname();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
     const router = useRouter();
 
@@ -52,11 +54,23 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
             setIsDesktop(window.innerWidth >= 1024);
         };
 
+        // Load collapse state from localStorage
+        const savedCollapsed = localStorage.getItem("sidebar-collapsed");
+        if (savedCollapsed !== null) {
+            setIsCollapsed(savedCollapsed === "true");
+        }
+
         checkDesktop();
         window.addEventListener('resize', checkDesktop);
 
         return () => window.removeEventListener('resize', checkDesktop);
     }, []);
+
+    const toggleCollapse = () => {
+        const newState = !isCollapsed;
+        setIsCollapsed(newState);
+        localStorage.setItem("sidebar-collapsed", String(newState));
+    };
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -69,7 +83,7 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
             {/* Mobile Trigger */}
             <button
                 onClick={() => setIsMobileOpen(true)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-zinc-900 border border-white/10 text-white"
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border text-foreground shadow-lg"
             >
                 <Menu className="w-6 h-6" />
             </button>
@@ -78,12 +92,15 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
             <AnimatePresence mode="wait">
                 {(isMobileOpen || isDesktop) && (
                     <motion.aside
-                        initial={{ x: -300 }}
-                        animate={{ x: 0 }}
-                        exit={{ x: -300 }}
+                        initial={false}
+                        animate={{
+                            width: isDesktop ? (isCollapsed ? 80 : 256) : 256,
+                            x: isMobileOpen || isDesktop ? 0 : -300
+                        }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
                         className={cn(
-                            "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0",
-                            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+                            "fixed inset-y-0 left-0 z-40 bg-card border-r border-border flex flex-col",
+                            !isDesktop && "w-64"
                         )}
                     >
                         {/* Header */}
@@ -92,14 +109,18 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                                     <Search className="w-4 h-4 text-primary" />
                                 </div>
-                                <span className="text-xl font-bold text-foreground">HUNTER</span>
+                                {!isCollapsed && (
+                                    <span className="text-xl font-bold text-foreground">HUNTER</span>
+                                )}
                             </Link>
-                            <button
-                                onClick={() => setIsMobileOpen(false)}
-                                className="lg:hidden text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            {!isDesktop && (
+                                <button
+                                    onClick={() => setIsMobileOpen(false)}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Navigation */}
@@ -117,38 +138,75 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
                                                 ? "bg-primary/10 text-primary border border-primary/20"
                                                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                         )}
+                                        title={isCollapsed ? link.name : undefined}
                                     >
-                                        <link.icon className="w-5 h-5" />
-                                        {link.name}
+                                        <link.icon className="w-5 h-5 flex-shrink-0" />
+                                        {!isCollapsed && <span>{link.name}</span>}
                                     </Link>
                                 );
                             })}
                         </nav>
 
-                        {/* User Profile & Logout */}
-                        <div className="p-4 border-t border-white/10 space-y-2">
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-900/50 border border-white/5 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-black font-bold text-xs">
-                                    {userName ? userName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">
-                                        {userName || userEmail?.split("@")[0]}
-                                    </p>
-                                    <p className="text-xs text-white/70 truncate">{userEmail}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <ThemeToggle />
+                        {/* Collapse Toggle (Desktop Only) */}
+                        {isDesktop && (
+                            <div className="px-4 py-2">
                                 <button
-                                    onClick={handleSignOut}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    onClick={toggleCollapse}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                                    title={isCollapsed ? "Expandir" : "Contraer"}
                                 >
-                                    <LogOut className="w-4 h-4" />
-                                    Cerrar Sesión
+                                    {isCollapsed ? (
+                                        <ChevronRight className="w-4 h-4" />
+                                    ) : (
+                                        <>
+                                            <ChevronLeft className="w-4 h-4" />
+                                            <span>Contraer</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
+                        )}
+
+                        {/* User Profile & Logout */}
+                        <div className="p-4 border-t border-border space-y-2">
+                            {!isCollapsed ? (
+                                <>
+                                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/50 border border-border mb-2">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                                            {userName ? userName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">
+                                                {userName || userEmail?.split("@")[0]}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleSignOut}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Cerrar Sesión
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex justify-center mb-2">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-black font-bold text-xs">
+                                            {userName ? userName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase()}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleSignOut}
+                                        className="w-full flex items-center justify-center px-2 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                        title="Cerrar Sesión"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </motion.aside>
                 )}
