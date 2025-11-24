@@ -81,14 +81,49 @@ export default function CompanyProfilePage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                                "group flex items-center gap-3 px-6 py-4 text-sm font-medium border-b-2 transition-all duration-300 whitespace-nowrap relative",
                                 activeTab === tab.id
-                                    ? "border-primary text-primary"
+                                    ? "border-primary text-white"
                                     : "border-transparent text-zinc-400 hover:text-zinc-200"
                             )}
                         >
-                            <tab.icon className="w-4 h-4" />
-                            {tab.label}
+                            {/* Icon with modern effects */}
+                            <div className={cn(
+                                "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                                activeTab === tab.id
+                                    ? "bg-gradient-to-br from-primary to-emerald-400 shadow-lg shadow-primary/50"
+                                    : "bg-zinc-900 group-hover:bg-zinc-800 group-hover:shadow-lg group-hover:shadow-primary/20"
+                            )}>
+                                {/* Glow effect behind icon */}
+                                {activeTab === tab.id && (
+                                    <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl animate-pulse"
+                                        style={{ animationDuration: '3s' }} />
+                                )}
+
+                                {/* Icon */}
+                                <tab.icon className={cn(
+                                    "w-5 h-5 relative z-10 transition-all duration-300",
+                                    activeTab === tab.id
+                                        ? "text-black drop-shadow-md transform scale-110"
+                                        : "text-zinc-400 group-hover:text-primary group-hover:scale-110"
+                                )} />
+
+                                {/* 3D border effect */}
+                                <div className={cn(
+                                    "absolute inset-0 rounded-xl border transition-all duration-300",
+                                    activeTab === tab.id
+                                        ? "border-primary/30"
+                                        : "border-white/5 group-hover:border-primary/20"
+                                )} />
+                            </div>
+
+                            {/* Label */}
+                            <span className="relative">
+                                {tab.label}
+                                {activeTab === tab.id && (
+                                    <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-emerald-400" />
+                                )}
+                            </span>
                         </button>
                     ))}
                 </div>
