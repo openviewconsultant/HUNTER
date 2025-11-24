@@ -149,7 +149,7 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
 
                         {/* Collapse Toggle (Desktop Only) */}
                         {isDesktop && (
-                            <div className="px-4 py-2">
+                            <div className="p-4">
                                 <button
                                     onClick={toggleCollapse}
                                     className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
@@ -166,48 +166,6 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
                                 </button>
                             </div>
                         )}
-
-                        {/* User Profile & Logout */}
-                        <div className="p-4 border-t border-border space-y-2">
-                            {!isCollapsed ? (
-                                <>
-                                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/50 border border-border mb-2">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                                            {userName ? userName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-foreground truncate">
-                                                {userName || userEmail?.split("@")[0]}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={handleSignOut}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        Cerrar Sesión
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex justify-center mb-2">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-black font-bold text-xs">
-                                            {userName ? userName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase()}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={handleSignOut}
-                                        className="w-full flex items-center justify-center px-2 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                                        title="Cerrar Sesión"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                    </button>
-                                </>
-                            )}
-                        </div>
                     </motion.aside>
                 )}
             </AnimatePresence>
