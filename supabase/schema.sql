@@ -3,13 +3,29 @@ create extension if not exists vector;
 
 -- Profiles table
 create table public.profiles (
-  id uuid references auth.users on delete cascade not null primary key,
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
   email text,
   full_name text,
   avatar_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Function to handle new user signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (user_id, email, full_name, avatar_url)
+  values (new.id, new.email, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger for new user signup
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 -- Tenders table
 create table public.tenders (
