@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Github, Mail } from "lucide-react";
+import { Loader2, Github, Mail, Briefcase, Target } from "lucide-react";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { InputModern } from "@/components/ui/input-modern";
-import { login } from "./actions";
+import { login, devLogin } from "./actions";
+import { isDevMode } from "@/lib/auth/dev-users";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -45,12 +46,61 @@ export default function LoginPage() {
         }
     };
 
+    const handleDevLogin = async (role: "company" | "hunter") => {
+        setIsLoading(true);
+        setError(null);
+        const res = await devLogin(role);
+        if (res?.error) {
+            setError(res.error);
+            setIsLoading(false);
+        }
+    };
+
     return (
         <AuthLayout
             title="Sign in"
             subtitle=""
         >
             <div className="space-y-8">
+                {/* Development Quick Login - Only visible in dev mode */}
+                {isDevMode() && (
+                    <div className="space-y-4 pb-4 border-b border-zinc-800/50">
+                        <div className="text-center">
+                            <span className="text-xs font-semibold text-amber-500/80 uppercase tracking-wider bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                                🚀 Development Mode
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => handleDevLogin("company")}
+                                disabled={isLoading}
+                                type="button"
+                                className="group relative overflow-hidden px-6 py-4 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 hover:border-primary/60 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-primary/20"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="relative flex flex-col items-center gap-2">
+                                    <Briefcase className="w-6 h-6 text-primary" />
+                                    <span className="text-sm font-semibold text-white">Company</span>
+                                    <span className="text-xs text-zinc-400">Quick Login</span>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleDevLogin("hunter")}
+                                disabled={isLoading}
+                                type="button"
+                                className="group relative overflow-hidden px-6 py-4 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 hover:border-cyan-500/60 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/20"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="relative flex flex-col items-center gap-2">
+                                    <Target className="w-6 h-6 text-cyan-400" />
+                                    <span className="text-sm font-semibold text-white">Hunter</span>
+                                    <span className="text-xs text-zinc-400">Quick Login</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Social Login Icons - Redis Style */}
                 <div className="flex justify-center gap-8">
                     <button

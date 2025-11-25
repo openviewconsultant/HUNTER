@@ -1,13 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2, Edit2, Check } from "lucide-react";
+import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2, Edit2, Check, LayoutGrid, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { saveCompanyInfo } from "./actions";
 import { DocumentUpload, UploadedFile } from "./document-upload";
 
 const tabs = [
+    { id: "overview", label: "Resumen General", icon: LayoutGrid },
     { id: "info", label: "Información de la Empresa", icon: Building2 },
     { id: "legal", label: "Documentos Legales", icon: ShieldCheck },
     { id: "financial", label: "Información Financiera", icon: DollarSign },
@@ -21,7 +22,7 @@ interface CompanyFormProps {
 type DocumentCategory = 'legal' | 'financial' | 'technical';
 
 export default function CompanyForm({ company }: CompanyFormProps) {
-    const [activeTab, setActiveTab] = useState("info");
+    const [activeTab, setActiveTab] = useState("overview");
     const [dragActive, setDragActive] = useState(false);
     const [isEditing, setIsEditing] = useState(!company);
 
@@ -164,6 +165,189 @@ export default function CompanyForm({ company }: CompanyFormProps) {
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto mt-6">
                 <div className="min-h-[400px] pb-8">
+                    {activeTab === "overview" && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                        >
+                            {/* Company Info Summary Card */}
+                            <div className="p-6 rounded-2xl card-gradient-primary card-shimmer shadow-glow">
+                                <div className="border-2 border-dashed border-white/20 rounded-xl p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+                                                <Building2 className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <h3 className="text-xl font-semibold text-foreground">Información de la Empresa</h3>
+                                        </div>
+                                        {company && (
+                                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
+                                                <Check className="w-4 h-4 text-primary" />
+                                                <span className="text-sm text-primary font-medium">Completado</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {company ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            <div className="space-y-1">
+                                                <p className="text-sm text-muted-foreground">Empresa</p>
+                                                <p className="text-foreground font-medium">{company.company_name}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm text-muted-foreground">NIT</p>
+                                                <p className="text-foreground font-medium">{company.nit}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm text-muted-foreground">Representante Legal</p>
+                                                <p className="text-foreground font-medium">{company.legal_representative}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm text-muted-foreground">Sector Económico</p>
+                                                <p className="text-foreground font-medium">{company.economic_sector}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4">
+                                            <p className="text-muted-foreground mb-4">Aún no has completado la información de tu empresa.</p>
+                                            <button
+                                                onClick={() => setActiveTab("info")}
+                                                className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                                            >
+                                                Completar Información
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Documents Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Legal Documents */}
+                                <div className="p-6 rounded-2xl card-gradient-primary card-shimmer shadow-glow">
+                                    <div className="border-2 border-dashed border-white/20 rounded-xl p-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+                                                <ShieldCheck className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <h4 className="font-semibold text-foreground">Documentos Legales</h4>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Archivos</span>
+                                                <span className="text-lg font-bold text-foreground">
+                                                    {documentsByCategory.legal.length}
+                                                </span>
+                                            </div>
+
+                                            {documentsByCategory.legal.length > 0 ? (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
+                                                    <Check className="w-3 h-3 text-primary" />
+                                                    <span className="text-xs text-primary font-medium">Documentos cargados</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                                                    <span className="text-xs text-muted-foreground">Sin documentos</span>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                onClick={() => setActiveTab("legal")}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-foreground rounded-lg transition-colors mt-4"
+                                            >
+                                                Ver Detalles
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Financial Documents */}
+                                <div className="p-6 rounded-2xl card-gradient-primary card-shimmer shadow-glow">
+                                    <div className="border-2 border-dashed border-white/20 rounded-xl p-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+                                                <DollarSign className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <h4 className="font-semibold text-foreground">Info. Financiera</h4>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Archivos</span>
+                                                <span className="text-lg font-bold text-foreground">
+                                                    {documentsByCategory.financial.length}
+                                                </span>
+                                            </div>
+
+                                            {documentsByCategory.financial.length > 0 ? (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
+                                                    <Check className="w-3 h-3 text-primary" />
+                                                    <span className="text-xs text-primary font-medium">Documentos cargados</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                                                    <span className="text-xs text-muted-foreground">Sin documentos</span>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                onClick={() => setActiveTab("financial")}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-foreground rounded-lg transition-colors mt-4"
+                                            >
+                                                Ver Detalles
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Technical Documents */}
+                                <div className="p-6 rounded-2xl card-gradient-primary card-shimmer shadow-glow">
+                                    <div className="border-2 border-dashed border-white/20 rounded-xl p-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <h4 className="font-semibold text-foreground">Exp. Técnica</h4>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Archivos</span>
+                                                <span className="text-lg font-bold text-foreground">
+                                                    {documentsByCategory.technical.length}
+                                                </span>
+                                            </div>
+
+                                            {documentsByCategory.technical.length > 0 ? (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
+                                                    <Check className="w-3 h-3 text-primary" />
+                                                    <span className="text-xs text-primary font-medium">Documentos cargados</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                                                    <span className="text-xs text-muted-foreground">Sin documentos</span>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                onClick={() => setActiveTab("technical")}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-foreground rounded-lg transition-colors mt-4"
+                                            >
+                                                Ver Detalles
+                                                <ArrowRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {activeTab === "info" && (
                         <>
                             {!isEditing && company ? (
