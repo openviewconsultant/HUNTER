@@ -84,7 +84,7 @@ export async function generateDocumentSummary(fileBase64: string, mimeType: stri
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest",
+            model: "gemini-pro-vision",
             generationConfig: {
                 maxOutputTokens: 100, // Limit response length for speed
                 temperature: 0.3, // Lower temperature for faster, more focused responses
