@@ -83,21 +83,28 @@ export async function generateDocumentSummary(fileBase64: string, mimeType: stri
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash-latest",
+            generationConfig: {
+                maxOutputTokens: 100, // Limit response length for speed
+                temperature: 0.3, // Lower temperature for faster, more focused responses
+            }
+        });
 
+        // Simplified prompts for faster processing
         let prompt = "";
         switch (category) {
             case 'legal':
-                prompt = "Analiza este documento legal y genera un resumen ejecutivo muy breve (máximo 40 palabras) destacando su validez, propósito y fechas clave. Responde en español y sé directo.";
+                prompt = "Resume en 30 palabras: tipo de documento, validez y fechas clave.";
                 break;
             case 'financial':
-                prompt = "Analiza este documento financiero y genera un resumen ejecutivo muy breve (máximo 40 palabras) destacando cifras clave y salud financiera. Responde en español y sé directo.";
+                prompt = "Resume en 30 palabras: cifras principales y situación financiera.";
                 break;
             case 'technical':
-                prompt = "Analiza este documento técnico y genera un resumen ejecutivo muy breve (máximo 40 palabras) destacando la experiencia o capacidad técnica demostrada. Responde en español y sé directo.";
+                prompt = "Resume en 30 palabras: experiencia técnica y certificaciones.";
                 break;
             default:
-                prompt = "Analiza este documento y genera un resumen muy breve (máximo 40 palabras). Responde en español.";
+                prompt = "Resume este documento en 30 palabras.";
         }
 
         const result = await model.generateContent([

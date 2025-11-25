@@ -204,7 +204,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="mt-6 p-4 rounded-xl bg-white/5 border-2 border-primary/20">
                     <div className="flex items-center justify-between mb-2">
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Completitud del Perfil</h3>
