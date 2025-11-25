@@ -8,7 +8,6 @@ import {
     Building2,
     Search,
     Settings,
-    LogOut,
     Menu,
     X,
     ChevronLeft,
@@ -43,7 +42,7 @@ const sidebarLinks = [
     },
 ];
 
-export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?: string | null }) {
+export function Sidebar({ }: { userEmail?: string; userName?: string | null }) {
     const pathname = usePathname();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
@@ -61,11 +60,7 @@ export function Sidebar({ userEmail, userName }: { userEmail?: string; userName?
         return () => window.removeEventListener('resize', checkDesktop);
     }, []);
 
-    const handleSignOut = async () => {
-        const supabase = createClient();
-        await supabase.auth.signOut();
-        router.push("/login");
-    };
+
 
     return (
         <>

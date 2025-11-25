@@ -15,6 +15,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const savedCollapsed = localStorage.getItem("sidebar-collapsed");
         if (savedCollapsed !== null) {
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             setIsCollapsed(savedCollapsed === "true");
         }
     }, []);
