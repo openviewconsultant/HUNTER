@@ -12,6 +12,7 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    Target,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,11 @@ const sidebarLinks = [
         name: "Perfil de Empresa",
         href: "/dashboard/company",
         icon: Building2,
+    },
+    {
+        name: "Shot",
+        href: "/dashboard/shot",
+        icon: Target,
     },
     {
         name: "Búsqueda",
