@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2, Edit2, Check, LayoutGrid, ArrowRight, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { saveCompanyInfo, generateDocumentSummary, uploadCompanyDocument } from "./actions";
+import { saveCompanyInfo, generateDocumentSummary, uploadCompanyDocument, listCompanyDocuments } from "./actions";
 import { DocumentUpload, UploadedFile } from "./document-upload";
 
 const tabs = [
@@ -33,6 +33,23 @@ export default function CompanyForm({ company }: CompanyFormProps) {
         financial: [],
         technical: []
     });
+
+    useEffect(() => {
+        const loadDocuments = async () => {
+            try {
+                const docs = await listCompanyDocuments();
+                setDocumentsByCategory(prev => ({
+                    ...prev,
+                    legal: docs.legal as UploadedFile[],
+                    financial: docs.financial as UploadedFile[],
+                    technical: docs.technical as UploadedFile[]
+                }));
+            } catch (error) {
+                console.error("Error loading documents:", error);
+            }
+        };
+        loadDocuments();
+    }, []);
 
     const fileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -101,9 +118,9 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                 }));
 
                 // Step 3: Generate AI Summary
-                // We still need base64 for the AI analysis part as it expects it
-                const base64 = await fileToBase64(originalFile);
-                const summaryResult = await generateDocumentSummary(base64, originalFile.type, category);
+                // Now we pass null for base64 and the storage path so the server downloads it
+                // This avoids the "Unterminated string in JSON" error for large files
+                const summaryResult = await generateDocumentSummary(null, originalFile.type, category, uploadResult.path);
 
                 // Step 4: Complete with summary and real URL
                 setDocumentsByCategory(prev => ({
