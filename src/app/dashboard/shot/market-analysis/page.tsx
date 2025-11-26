@@ -146,25 +146,25 @@ export default function MarketAnalysisPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
                                     className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors cursor-pointer group"
-                                    onClick={() => window.open(proc.urlproceso, '_blank')}
+                                    onClick={() => window.open(typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso, '_blank')}
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <span className="px-2 py-1 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 uppercase">
-                                            {proc.estado_del_proceso}
+                                            {proc.fase}
                                         </span>
                                         <span className="text-xs text-muted-foreground">{new Date(proc.fecha_de_publicacion_del).toLocaleDateString()}</span>
                                     </div>
                                     <h4 className="text-sm font-medium text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
-                                        {proc.objeto_del_proceso}
+                                        {proc.descripci_n_del_procedimiento}
                                     </h4>
                                     <div className="flex items-center gap-2 text-xs text-zinc-400 mb-3">
                                         <Building2 className="w-3 h-3" />
-                                        <span className="truncate max-w-[200px]">{proc.nombre_de_la_entidad}</span>
+                                        <span className="truncate max-w-[200px]">{proc.entidad}</span>
                                     </div>
                                     <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                         <div className="text-xs">
                                             <span className="text-muted-foreground">Cuantía:</span>
-                                            <span className="text-foreground font-medium ml-1">{formatCurrency(proc.cuantia_proceso)}</span>
+                                            <span className="text-foreground font-medium ml-1">{formatCurrency(proc.precio_base)}</span>
                                         </div>
                                         <div className="flex items-center gap-1 text-xs text-primary">
                                             <span>Ver en SECOP</span>

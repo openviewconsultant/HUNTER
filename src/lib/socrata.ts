@@ -1,29 +1,28 @@
 export interface SecopProcess {
     id_del_proceso: string;
     referencia_del_proceso: string;
-    nombre_de_la_entidad: string;
-    objeto_del_proceso: string;
-    estado_del_proceso: string;
-    cuantia_proceso: string;
+    entidad: string;
+    descripci_n_del_procedimiento: string;
+    fase: string;
+    precio_base: string;
     fecha_de_publicacion_del: string;
-    urlproceso: string;
+    urlproceso: { url: string } | string;
     tipo_de_contrato: string;
     modalidad_de_contratacion: string;
 }
 
-const SOCRATA_API_URL = "https://www.datos.gov.co/resource/jbjy-vk9h.json";
+// Using "SECOP II - Procesos de Contratación" dataset
+const SOCRATA_API_URL = "https://www.datos.gov.co/resource/p6dx-8zbt.json";
 const APP_TOKEN = process.env.SOCRATA_APP_TOKEN; // Optional but recommended
 
 export async function searchSecopProcesses(query: string, limit: number = 20): Promise<SecopProcess[]> {
     try {
-        // Construct SoQL query
-        // We search in 'objeto_del_proceso' or 'nombre_de_la_entidad'
-        // Filter by recent processes (e.g., last 3 months) could be added
-
-        const whereClause = `(lower(objeto_del_proceso) like '%${query.toLowerCase()}%' OR lower(nombre_de_la_entidad) like '%${query.toLowerCase()}%') AND estado_del_proceso = 'Presentación de oferta'`;
+        // Filter by 'Presentación de oferta' to show active opportunities
+        const whereClause = `fase = 'Presentación de oferta'`;
 
         const url = new URL(SOCRATA_API_URL);
         url.searchParams.append("$limit", limit.toString());
+        url.searchParams.append("$q", query);
         url.searchParams.append("$where", whereClause);
         url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
 
@@ -54,10 +53,11 @@ export async function getMarketMetrics(query: string) {
     // Example aggregation query
     // Calculate average amount and count
     try {
-        const whereClause = `(lower(objeto_del_proceso) like '%${query.toLowerCase()}%') AND estado_del_proceso = 'Presentación de oferta'`;
+        const whereClause = `fase = 'Presentación de oferta'`;
 
         const url = new URL(SOCRATA_API_URL);
-        url.searchParams.append("$select", "count(*) as count, avg(cuantia_proceso) as avg_amount");
+        url.searchParams.append("$select", "count(*) as count, avg(precio_base) as avg_amount");
+        url.searchParams.append("$q", query);
         url.searchParams.append("$where", whereClause);
 
         const response = await fetch(url.toString());
