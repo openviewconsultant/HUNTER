@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2, Edit2, Check, LayoutGrid, ArrowRight, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { saveCompanyInfo, generateDocumentSummary } from "./actions";
+import { saveCompanyInfo, generateDocumentSummary, uploadCompanyDocument } from "./actions";
 import { DocumentUpload, UploadedFile } from "./document-upload";
 
 const tabs = [
@@ -66,12 +66,12 @@ export default function CompanyForm({ company }: CompanyFormProps) {
         newFiles.forEach(async (uploadedFile, index) => {
             const originalFile = files[index];
 
-            // Step 1: Simulate initial upload (0-40%)
+            // Step 1: Simulate initial upload progress for UX
             let currentProgress = 0;
             const uploadInterval = setInterval(() => {
                 currentProgress += Math.random() * 10;
-                if (currentProgress >= 40) {
-                    currentProgress = 40;
+                if (currentProgress >= 90) {
+                    currentProgress = 90;
                     clearInterval(uploadInterval);
                 }
                 setDocumentsByCategory(prev => ({
@@ -82,34 +82,30 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                 }));
             }, 200);
 
-            // Step 2: Convert to base64 and update progress to 50%
             try {
-                const base64 = await fileToBase64(originalFile);
+                // Step 2: Upload to Supabase Storage
+                const formData = new FormData();
+                formData.append('file', originalFile);
+                formData.append('category', category);
+
+                const uploadResult = await uploadCompanyDocument(formData);
+
                 clearInterval(uploadInterval);
+
+                // Update progress to 95%
                 setDocumentsByCategory(prev => ({
                     ...prev,
                     [category]: prev[category].map(f =>
-                        f.id === uploadedFile.id ? { ...f, progress: 50 } : f
+                        f.id === uploadedFile.id ? { ...f, progress: 95 } : f
                     )
                 }));
 
-                // Step 3: Generate AI Summary (50-90%)
-                const aiInterval = setInterval(() => {
-                    setDocumentsByCategory(prev => ({
-                        ...prev,
-                        [category]: prev[category].map(f => {
-                            if (f.id === uploadedFile.id && f.progress < 90) {
-                                return { ...f, progress: Math.min(f.progress + 5, 90) };
-                            }
-                            return f;
-                        })
-                    }));
-                }, 800);
+                // Step 3: Generate AI Summary
+                // We still need base64 for the AI analysis part as it expects it
+                const base64 = await fileToBase64(originalFile);
+                const summaryResult = await generateDocumentSummary(base64, originalFile.type, category);
 
-                const result = await generateDocumentSummary(base64, originalFile.type, category);
-                clearInterval(aiInterval);
-
-                // Step 4: Complete with summary (always succeeds now)
+                // Step 4: Complete with summary and real URL
                 setDocumentsByCategory(prev => ({
                     ...prev,
                     [category]: prev[category].map(f =>
@@ -117,12 +113,15 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                             ...f,
                             status: 'completed',
                             progress: 100,
-                            summary: result.summary
+                            summary: summaryResult.summary,
+                            // Store the real URL if needed in the future, currently UploadedFile interface might need update
+                            // url: uploadResult.url 
                         } : f
                     )
                 }));
             } catch (error) {
                 console.error("Error processing document:", error);
+                clearInterval(uploadInterval);
                 setDocumentsByCategory(prev => ({
                     ...prev,
                     [category]: prev[category].map(f =>

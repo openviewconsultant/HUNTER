@@ -176,3 +176,53 @@ export async function generateDocumentSummary(fileBase64: string, mimeType: stri
         };
     }
 }
+
+export async function uploadCompanyDocument(formData: FormData) {
+    const supabase = await createClient();
+
+    // 1. Authenticate user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        throw new Error("Usuario no autenticado");
+    }
+
+    const file = formData.get('file') as File;
+    const category = formData.get('category') as string;
+
+    if (!file || !category) {
+        throw new Error("Faltan datos requeridos (archivo o categoría)");
+    }
+
+    // 2. Define path: user_id/category/filename
+    // Sanitize filename to avoid issues
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filePath = `${user.id}/${category}/${Date.now()}_${sanitizedName}`;
+
+    // 3. Upload to Supabase Storage
+    const { data, error } = await supabase
+        .storage
+        .from('company-documents')
+        .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+        });
+
+    if (error) {
+        console.error("Error uploading to storage:", error);
+        throw new Error(`Error al subir archivo: ${error.message}`);
+    }
+
+    // 4. Get Public URL
+    const { data: { publicUrl } } = supabase
+        .storage
+        .from('company-documents')
+        .getPublicUrl(filePath);
+
+    return {
+        success: true,
+        url: publicUrl,
+        path: filePath,
+        name: file.name,
+        size: file.size
+    };
+}
