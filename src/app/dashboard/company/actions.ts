@@ -114,10 +114,9 @@ export async function saveFinancials(formData: FormData) {
         financialData.unspsc_codes = JSON.parse(formData.get("unspsc_codes") as string);
     }
 
-    // Allow saving experience summary
-    if (formData.get("experience_summary")) {
-        financialData.experience_summary = JSON.parse(formData.get("experience_summary") as string);
-    }
+    // NOTE: experience_summary is now auto-calculated by database triggers
+    // based on company_contracts table, so we no longer accept manual input
+
 
     const { data: existingCompany } = await supabase
         .from("companies")
@@ -139,6 +138,187 @@ export async function saveFinancials(formData: FormData) {
 
     revalidatePath("/dashboard/company");
 }
+
+// ==================== CONTRACT MANAGEMENT ====================
+
+export async function saveContract(formData: FormData) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("No authenticated user");
+
+    // Get user's profile and company
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+    if (!profile) throw new Error("Profile not found");
+
+    const { data: company } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("profile_id", profile.id)
+        .single();
+
+    if (!company) {
+        throw new Error("Empresa no encontrada. Por favor completa primero la información de tu empresa.");
+    }
+
+    const contractId = formData.get("contract_id") as string | null;
+    const contractData: any = {
+        company_id: company.id,
+        contract_number: formData.get("contract_number"),
+        client_name: formData.get("client_name"),
+        contract_value: parseFloat(formData.get("contract_value") as string),
+        contract_value_smmlv: parseFloat(formData.get("contract_value_smmlv") as string) || null,
+        execution_date: formData.get("execution_date") || null,
+        description: formData.get("description") || null,
+        updated_at: new Date().toISOString(),
+    };
+
+    // Parse UNSPSC codes if provided
+    const unspscCodesStr = formData.get("unspsc_codes") as string;
+    if (unspscCodesStr) {
+        contractData.unspsc_codes = unspscCodesStr
+            .split(',')
+            .map(code => code.trim())
+            .filter(code => code);
+    }
+
+    // Handle document upload if file is present
+    const file = formData.get("document") as File | null;
+    if (file && file.size > 0) {
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filePath = `${user.id}/contracts/${Date.now()}_${sanitizedName}`;
+
+        const { error: uploadError } = await supabase
+            .storage
+            .from('company-documents')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (uploadError) {
+            throw new Error(`Error al subir documento: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl } } = supabase
+            .storage
+            .from('company-documents')
+            .getPublicUrl(filePath);
+
+        contractData.document_url = publicUrl;
+        contractData.document_name = file.name;
+    }
+
+    // Update or insert contract
+    if (contractId) {
+        // Update existing contract
+        const { error } = await supabase
+            .from("company_contracts")
+            .update(contractData)
+            .eq("id", contractId);
+
+        if (error) throw new Error(error.message);
+    } else {
+        // Insert new contract
+        const { error } = await supabase
+            .from("company_contracts")
+            .insert(contractData);
+
+        if (error) throw new Error(error.message);
+    }
+
+    revalidatePath("/dashboard/company");
+    return { success: true };
+}
+
+export async function listCompanyContracts() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    // Get user's profile and company
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+    if (!profile) return [];
+
+    const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
+
+    if (!company) return [];
+
+    // Fetch all contracts for this company
+    const { data: contracts, error } = await supabase
+        .from('company_contracts')
+        .select('*')
+        .eq('company_id', company.id)
+        .order('execution_date', { ascending: false });
+
+    if (error) {
+        console.error("Error fetching contracts:", error);
+        return [];
+    }
+
+    return contracts || [];
+}
+
+export async function deleteContract(contractId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("Usuario no autenticado");
+
+    // Get contract info to find document URL
+    const { data: contract, error: fetchError } = await supabase
+        .from('company_contracts')
+        .select('*')
+        .eq('id', contractId)
+        .single();
+
+    if (fetchError || !contract) {
+        throw new Error("Contrato no encontrado");
+    }
+
+    // Delete document from storage if it exists
+    if (contract.document_url) {
+        const urlParts = contract.document_url.split('/company-documents/');
+        if (urlParts.length === 2) {
+            const storagePath = urlParts[1];
+            await supabase
+                .storage
+                .from('company-documents')
+                .remove([storagePath]);
+        }
+    }
+
+    // Delete contract from database
+    const { error: deleteError } = await supabase
+        .from('company_contracts')
+        .delete()
+        .eq('id', contractId);
+
+    if (deleteError) {
+        throw new Error(`Error al eliminar contrato: ${deleteError.message}`);
+    }
+
+    revalidatePath("/dashboard/company");
+    return { success: true };
+}
+
+// ==================== END CONTRACT MANAGEMENT ====================
+
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Upload, FileText, DollarSign, ShieldCheck, Plus, Building2, Edit2, Check, LayoutGrid, ArrowRight, Trash2, Camera } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { saveCompanyInfo, generateDocumentSummary, uploadCompanyDocument, listCompanyDocuments, deleteCompanyDocument } from "./actions";
+import { saveCompanyInfo, generateDocumentSummary, uploadCompanyDocument, listCompanyDocuments, deleteCompanyDocument, saveContract, listCompanyContracts, deleteContract } from "./actions";
 import { testDatabaseConnection } from "./test-db";
 import { DocumentUpload, UploadedFile } from "./document-upload";
 
@@ -23,6 +23,20 @@ interface CompanyFormProps {
 
 type DocumentCategory = 'legal' | 'financial' | 'technical';
 
+interface Contract {
+    id: string;
+    contract_number: string;
+    client_name: string;
+    contract_value: number;
+    contract_value_smmlv: number | null;
+    execution_date: string | null;
+    unspsc_codes: string[] | null;
+    description: string | null;
+    document_url: string | null;
+    document_name: string | null;
+    created_at: string;
+}
+
 export default function CompanyForm({ company }: CompanyFormProps) {
     const [activeTab, setActiveTab] = useState("overview");
     const [dragActive, setDragActive] = useState(false);
@@ -31,6 +45,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
     const [documentModalOpen, setDocumentModalOpen] = useState<{ category: string; open: boolean }>({ category: '', open: false });
     const [uploadModalOpen, setUploadModalOpen] = useState<{ category: string; open: boolean }>({ category: '', open: false });
     const [isEditingFinancial, setIsEditingFinancial] = useState(false);
+    const [contracts, setContracts] = useState<Contract[]>([]);
+    const [isAddingContract, setIsAddingContract] = useState(false);
 
     // Estado separado para documentos por categoría
     const [documentsByCategory, setDocumentsByCategory] = useState<Record<DocumentCategory, UploadedFile[]>>({
@@ -59,7 +75,19 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                 console.error("❌ Error loading documents:", error);
             }
         };
+
+        const loadContracts = async () => {
+            try {
+                const contractsData = await listCompanyContracts();
+                console.log("📝 Contracts loaded:", contractsData);
+                setContracts(contractsData as Contract[]);
+            } catch (error) {
+                console.error("❌ Error loading contracts:", error);
+            }
+        };
+
         loadDocuments();
+        loadContracts();
     }, []);
 
     const fileToBase64 = (file: File): Promise<string> => {
@@ -348,10 +376,10 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={cn(
-                                        "group flex items-center gap-3 px-4 py-4 text-sm font-medium border-b-2 transition-all duration-300 whitespace-nowrap relative",
-                                        isActive
-                                            ? "border-primary text-foreground"
-                                            : "border-transparent text-zinc-400 hover:text-zinc-200"
+                                        "flex-1 min-w-0 flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 text-left group relative overflow-hidden",
+                                        activeTab === tab.id
+                                            ? "bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.1)]"
+                                            : "bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 group-hover:bg-slate-200 dark:group-hover:bg-white/10"
                                     )}
                                 >
                                     <div className={cn(
@@ -488,7 +516,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         defaultValue={company?.company_name}
                                                         placeholder="Ej. Tech Solutions SAS"
                                                         required
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                                 <div>
@@ -501,7 +529,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         defaultValue={company?.nit}
                                                         placeholder="900.123.456-7"
                                                         required
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                             </div>
@@ -517,7 +545,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         defaultValue={company?.legal_representative}
                                                         placeholder="Juan Pérez"
                                                         required
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                                 <div>
@@ -530,7 +558,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         defaultValue={company?.economic_sector}
                                                         placeholder="Tecnología, Construcción, etc."
                                                         required
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                             </div>
@@ -543,7 +571,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         name="phone"
                                                         defaultValue={company?.phone}
                                                         placeholder="+57 300 123 4567"
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                                 <div>
@@ -552,7 +580,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         type="text"
                                                         name="country"
                                                         defaultValue={company?.country || "Colombia"}
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                             </div>
@@ -564,7 +592,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                     name="address"
                                                     defaultValue={company?.address}
                                                     placeholder="Calle 123 #45-67"
-                                                    className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                    className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                 />
                                             </div>
 
@@ -576,7 +604,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         name="city"
                                                         defaultValue={company?.city}
                                                         placeholder="Bogotá"
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                                 <div>
@@ -586,7 +614,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                         name="department"
                                                         defaultValue={company?.department}
                                                         placeholder="Cundinamarca"
-                                                        className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                        className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                     />
                                                 </div>
                                             </div>
@@ -656,7 +684,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     exit={{ opacity: 0, scale: 0.95 }}
-                                                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
+                                                    className="p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -677,7 +705,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                                             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                                                             <span className="text-xs font-medium text-primary">Análisis IA</span>
                                                                         </div>
-                                                                        <p className="text-xs text-zinc-300 leading-relaxed">
+                                                                        <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                                                                             {file.summary}
                                                                         </p>
                                                                     </div>
@@ -754,7 +782,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     exit={{ opacity: 0, scale: 0.95 }}
-                                                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
+                                                    className="p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -775,7 +803,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                                             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                                                             <span className="text-xs font-medium text-primary">Análisis IA</span>
                                                                         </div>
-                                                                        <p className="text-xs text-zinc-300 leading-relaxed">
+                                                                        <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                                                                             {file.summary}
                                                                         </p>
                                                                     </div>
@@ -805,9 +833,9 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                             animate={{ opacity: 1, y: 0 }}
                             className="space-y-4"
                         >
-                            <div className="p-6 rounded-2xl card-gradient card-shimmer shadow-glow">
-                                <div className="border-2 border-dashed border-white/20 rounded-xl p-6">
-                                    <div className="mb-6">
+                            <div className="p-4 rounded-2xl card-gradient card-shimmer shadow-glow">
+                                <div className="border-2 border-dashed border-white/20 rounded-xl p-4">
+                                    <div className="mb-4">
                                         <h3 className="text-xl font-semibold text-foreground">Capacidad de Contratación</h3>
                                         <p className="text-sm text-muted-foreground mt-1">
                                             Información extraída automáticamente de tus documentos para el análisis de licitaciones.
@@ -841,7 +869,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                     </div>
 
                                     {/* Financial Indicators */}
-                                    <div className="mb-8">
+                                    <div className="mb-4">
                                         <h4 className="text-sm font-medium text-primary mb-4 flex items-center gap-2">
                                             <DollarSign className="w-4 h-4" />
                                             Indicadores Financieros
@@ -877,7 +905,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                     </div>
 
                                     {/* UNSPSC Codes */}
-                                    <div className="mb-8">
+                                    <div className="mb-4">
                                         <h4 className="text-sm font-medium text-primary mb-4 flex items-center gap-2">
                                             <LayoutGrid className="w-4 h-4" />
                                             Códigos UNSPSC (Clasificador de Bienes y Servicios)
@@ -974,7 +1002,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     exit={{ opacity: 0, scale: 0.95 }}
-                                                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
+                                                    className="p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -995,7 +1023,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                                             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                                                             <span className="text-xs font-medium text-primary">Análisis IA</span>
                                                                         </div>
-                                                                        <p className="text-xs text-zinc-300 leading-relaxed">
+                                                                        <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                                                                             {file.summary}
                                                                         </p>
                                                                     </div>
@@ -1144,10 +1172,10 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         <Upload className="w-6 h-6 text-primary" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-semibold text-foreground">
+                                        <h3 className="text-lg font-semibold text-primary">
                                             {uploadModalOpen.category === 'legal' ? 'Documentos Legales' : uploadModalOpen.category === 'financial' ? 'Documentos Financieros' : 'Documentos Técnicos'}
                                         </h3>
-                                        <p className="text-xs text-muted-foreground mt-1">
+                                        <p className="text-xs text-primary/70 mt-1">
                                             Selecciona el documento que deseas cargar
                                         </p>
                                     </div>
@@ -1169,8 +1197,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                             <div className="space-y-3">
                                 {uploadModalOpen.category === 'legal' && (
                                     <>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificado de existencia y representación legal</span>
                                             </div>
@@ -1180,8 +1208,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>RUT (Registro Único Tributario)</span>
                                             </div>
@@ -1191,8 +1219,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Cédula del representante legal</span>
                                             </div>
@@ -1202,8 +1230,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificado antecedentes fiscales (Contraloría)</span>
                                             </div>
@@ -1213,8 +1241,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificado antecedentes disciplinarios (Procuraduría)</span>
                                             </div>
@@ -1224,8 +1252,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificado antecedentes judiciales</span>
                                             </div>
@@ -1235,8 +1263,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Boletín de responsables fiscales</span>
                                             </div>
@@ -1246,8 +1274,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificación bancaria</span>
                                             </div>
@@ -1261,8 +1289,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                 )}
                                 {uploadModalOpen.category === 'financial' && (
                                     <>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Balance General (últimos 3 años)</span>
                                             </div>
@@ -1272,8 +1300,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Estado de Resultados (últimos 3 años)</span>
                                             </div>
@@ -1283,8 +1311,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Declaración de Renta (últimas 2 vigencias)</span>
                                             </div>
@@ -1294,8 +1322,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificación de pago de aportes seguridad social</span>
                                             </div>
@@ -1305,8 +1333,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Indicadores financieros certificados</span>
                                             </div>
@@ -1316,8 +1344,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificación de capacidad de contratación (K)</span>
                                             </div>
@@ -1332,8 +1360,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
 
                                 {uploadModalOpen.category === 'technical' && (
                                     <>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>RUP (Registro Único de Proponentes)</span>
                                             </div>
@@ -1343,8 +1371,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificados de contratos ejecutados</span>
                                             </div>
@@ -1354,8 +1382,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Actas de liquidación de contratos</span>
                                             </div>
@@ -1365,8 +1393,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificaciones de experiencia</span>
                                             </div>
@@ -1376,8 +1404,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Licencias y permisos profesionales</span>
                                             </div>
@@ -1387,8 +1415,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Portafolio de proyectos/servicios</span>
                                             </div>
@@ -1398,8 +1426,8 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 <Upload className="w-4 h-4" /> Subir
                                             </label>
                                         </div>
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-between p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors">
+                                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-100">
                                                 <div className="w-2 h-2 rounded-full bg-primary" />
                                                 <span>Certificados de personal técnico</span>
                                             </div>
@@ -1428,10 +1456,10 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-gradient-to-br from-slate-900 to-slate-800 border border-primary/30 rounded-2xl shadow-2xl max-w-2xl w-full"
+                        className="bg-gradient-to-br from-slate-900 to-slate-800 border border-primary/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col"
                     >
-                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                            <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                            <h3 className="text-primary text-xl font-semibold flex items-center gap-2">
                                 <DollarSign className="w-5 h-5 text-primary" />
                                 Editar Indicadores Financieros
                             </h3>
@@ -1445,7 +1473,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                 </svg>
                             </button>
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 overflow-y-auto flex-1">
                             <form action={async (formData) => {
                                 const indicators = {
                                     liquidity_index: parseFloat(formData.get("liquidity_index") as string),
@@ -1486,7 +1514,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 type="number"
                                                 step="0.01"
                                                 defaultValue={company?.financial_indicators?.liquidity_index}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                 placeholder="0.00"
                                             />
                                         </div>
@@ -1497,7 +1525,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 type="number"
                                                 step="0.1"
                                                 defaultValue={company?.financial_indicators?.indebtedness_index ? (company.financial_indicators.indebtedness_index * 100).toFixed(1) : ""}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                 placeholder="0.0"
                                             />
                                         </div>
@@ -1507,7 +1535,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 name="working_capital"
                                                 type="number"
                                                 defaultValue={company?.financial_indicators?.working_capital}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -1517,7 +1545,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                 name="equity"
                                                 type="number"
                                                 defaultValue={company?.financial_indicators?.equity}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                                className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -1533,39 +1561,33 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                             name="unspsc_codes"
                                             type="text"
                                             defaultValue={company?.unspsc_codes?.join(', ')}
-                                            className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                            className="w-full p-3 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                             placeholder="Ej: 72101500, 81111500, 93141600 (separados por comas)"
                                         />
                                         <p className="text-xs text-muted-foreground">Ingresa los códigos UNSPSC separados por comas</p>
                                     </div>
                                 </div>
 
-                                {/* Experience Summary */}
+                                {/* Experience Summary - Auto-calculated from Contracts */}
                                 <div className="pt-4 border-t border-white/10">
-                                    <h4 className="text-sm font-semibold text-primary mb-4">Resumen de Experiencia</h4>
+                                    <h4 className="text-sm font-semibold text-primary mb-4">Resumen de Experiencia (Auto-calculado)</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-zinc-400">Total Contratos Ejecutados</label>
-                                            <input
-                                                name="total_contracts"
-                                                type="number"
-                                                defaultValue={company?.experience_summary?.total_contracts}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                                                placeholder="0"
-                                            />
+                                            <div className="w-full p-3 rounded-lg bg-input/50 border border-border text-foreground">
+                                                {contracts.length}
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-zinc-400">Valor Total (SMMLV)</label>
-                                            <input
-                                                name="total_value_smmlv"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={company?.experience_summary?.total_value_smmlv}
-                                                className="w-full p-3 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                                                placeholder="0.00"
-                                            />
+                                            <div className="w-full p-3 rounded-lg bg-input/50 border border-border text-foreground">
+                                                {contracts.reduce((sum, c) => sum + (c.contract_value_smmlv || 0), 0).toFixed(2)}
+                                            </div>
                                         </div>
                                     </div>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        Estos valores se calculan automáticamente desde tus contratos registrados
+                                    </p>
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
@@ -1580,10 +1602,205 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         type="submit"
                                         className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
                                     >
-                                        Guardar Cambios
+                                        Guardar Indicadores
                                     </button>
                                 </div>
                             </form>
+
+                            {/* Contracts Management - Outside the main form */}
+                            <div className="pt-6 border-t border-white/10 mt-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-sm font-semibold text-primary">Contratos Ejecutados</h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingContract(!isAddingContract)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors text-sm"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        {isAddingContract ? 'Cancelar' : 'Agregar Contrato'}
+                                    </button>
+                                </div>
+
+                                {/* Add Contract Form */}
+                                {isAddingContract && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="mb-4 p-4 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10"
+                                    >
+                                        <form action={async (formData) => {
+                                            try {
+                                                await saveContract(formData);
+                                                const updatedContracts = await listCompanyContracts();
+                                                setContracts(updatedContracts as Contract[]);
+                                                setIsAddingContract(false);
+                                            } catch (error: any) {
+                                                alert(error.message || "Error al guardar el contrato");
+                                            }
+                                        }} className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Número de Contrato *</label>
+                                                    <input
+                                                        name="contract_number"
+                                                        type="text"
+                                                        required
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                        placeholder="CTR-2024-001"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Cliente *</label>
+                                                    <input
+                                                        name="client_name"
+                                                        type="text"
+                                                        required
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                        placeholder="Nombre del cliente"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Valor (COP) *</label>
+                                                    <input
+                                                        name="contract_value"
+                                                        type="number"
+                                                        required
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                        placeholder="150000000"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Valor (SMMLV)</label>
+                                                    <input
+                                                        name="contract_value_smmlv"
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                        placeholder="120.5"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Fecha de Ejecución</label>
+                                                    <input
+                                                        name="execution_date"
+                                                        type="date"
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-zinc-400">Códigos UNSPSC</label>
+                                                    <input
+                                                        name="unspsc_codes"
+                                                        type="text"
+                                                        className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                        placeholder="80101500, 80111500"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-zinc-400">Descripción</label>
+                                                <textarea
+                                                    name="description"
+                                                    rows={2}
+                                                    className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
+                                                    placeholder="Breve descripción del contrato..."
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-zinc-400">Documento Soporte (PDF, max 10MB)</label>
+                                                <input
+                                                    name="document"
+                                                    type="file"
+                                                    accept=".pdf"
+                                                    className="w-full p-2 rounded-lg bg-sky-100 dark:bg-slate-800/50 border border-sky-300 dark:border-slate-700 text-foreground file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-sm"
+                                                />
+                                            </div>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsAddingContract(false)}
+                                                    className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="submit"
+                                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                                                >
+                                                    Guardar Contrato
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </motion.div>
+                                )}
+
+                                {/* Contracts List */}
+                                {contracts.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {contracts.map((contract) => (
+                                            <div
+                                                key={contract.id}
+                                                className="p-3 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 hover:border-primary/50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h5 className="text-sm font-semibold text-foreground">{contract.contract_number}</h5>
+                                                            <span className="text-xs text-muted-foreground">•</span>
+                                                            <span className="text-xs text-muted-foreground">{contract.client_name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                            <span>💰 ${contract.contract_value.toLocaleString()}</span>
+                                                            {contract.contract_value_smmlv && (
+                                                                <span>📊 {contract.contract_value_smmlv} SMMLV</span>
+                                                            )}
+                                                            {contract.execution_date && (
+                                                                <span>📅 {new Date(contract.execution_date).toLocaleDateString()}</span>
+                                                            )}
+                                                        </div>
+                                                        {contract.description && (
+                                                            <p className="text-xs text-zinc-400 mt-1">{contract.description}</p>
+                                                        )}
+                                                        {contract.document_url && (
+                                                            <a
+                                                                href={contract.document_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-2"
+                                                            >
+                                                                <FileText className="w-3 h-3" />
+                                                                {contract.document_name || 'Ver documento'}
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            if (confirm('¿Estás seguro de eliminar este contrato?')) {
+                                                                try {
+                                                                    await deleteContract(contract.id);
+                                                                    const updatedContracts = await listCompanyContracts();
+                                                                    setContracts(updatedContracts as Contract[]);
+                                                                } catch (error: any) {
+                                                                    alert(error.message || "Error al eliminar el contrato");
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors group"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-muted-foreground group-hover:text-red-500" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                        No hay contratos registrados. Agrega tu primer contrato para comenzar.
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </motion.div>
                 </div>
@@ -1610,10 +1827,10 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         <FileText className="w-6 h-6 text-primary" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-semibold text-foreground">
+                                        <h3 className="text-lg font-semibold text-primary">
                                             Documentos {documentModalOpen.category === 'legal' ? 'Legales' : documentModalOpen.category === 'financial' ? 'Financieros' : 'Técnicos'}
                                         </h3>
-                                        <p className="text-xs text-muted-foreground mt-1">
+                                        <p className="text-xs text-primary/70 mt-1">
                                             {documentsByCategory[documentModalOpen.category as DocumentCategory]?.length || 0} documento(s) cargados
                                         </p>
                                     </div>
@@ -1638,7 +1855,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         key={file.id}
                                         initial={{ opacity: 0, scale: 0.95 }}
                                         animate={{ opacity: 1, scale: 1 }}
-                                        className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
+                                        className="p-4 rounded-lg bg-sky-50 dark:bg-slate-700/80 border border-sky-200 dark:border-slate-600 hover:border-primary/50 transition-colors"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -1662,7 +1879,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                                                 <span className="text-xs font-medium text-primary">Análisis IA</span>
                                                             </div>
-                                                            <p className="text-xs text-zinc-300 leading-relaxed line-clamp-3">
+                                                            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed line-clamp-3">
                                                                 {file.summary}
                                                             </p>
                                                         </div>
