@@ -41,7 +41,7 @@ export default async function AnalyticsPage() {
                     <CardContent>
                         <div className="text-2xl font-bold">{data.financialHealth}%</div>
                         <p className="text-xs text-muted-foreground">
-                            Liquidez: {(data.liquidityIndex * 100).toFixed(1)}% | Endeudamiento: {(data.indebtednessIndex * 100).toFixed(1)}%
+                            Liquidez: {(data.liquidityIndex * 100).toFixed(1)}% | Endeudamiento: {((data.indebtednessIndex ?? 0) * 100).toFixed(1)}%
                         </p>
                     </CardContent>
                 </Card>
@@ -86,11 +86,11 @@ export default async function AnalyticsPage() {
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between border-b pb-3">
                             <span className="text-sm font-medium">Capital de Trabajo</span>
-                            <span className="text-sm">{formatCurrency(data.workingCapital)}</span>
+                            <span className="text-sm">{formatCurrency(data.workingCapital ?? 0)}</span>
                         </div>
                         <div className="flex items-center justify-between border-b pb-3">
                             <span className="text-sm font-medium">Patrimonio</span>
-                            <span className="text-sm">{formatCurrency(data.equity)}</span>
+                            <span className="text-sm">{formatCurrency(data.equity ?? 0)}</span>
                         </div>
                         <div className="flex items-center justify-between border-b pb-3">
                             <span className="text-sm font-medium">Índice de Liquidez</span>
@@ -98,7 +98,7 @@ export default async function AnalyticsPage() {
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">Nivel de Endeudamiento</span>
-                            <span className="text-sm">{(data.indebtednessIndex * 100).toFixed(1)}%</span>
+                            <span className="text-sm">{((data.indebtednessIndex ?? 0) * 100).toFixed(1)}%</span>
                         </div>
                     </CardContent>
                 </Card>

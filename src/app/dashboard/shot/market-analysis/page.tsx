@@ -1,46 +1,104 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2 } from "lucide-react";
+import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2, ExternalLink, Target, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { searchMarketOpportunities, getMarketInsights } from "./actions";
+import { searchMarketOpportunities, getMarketInsights, getUserCompanyForFilter, searchOpportunitiesByCompany } from "./actions";
 import { SecopProcess } from "@/lib/socrata";
+import { evaluateProcessRequirements, addProcessToMissions } from "./process-actions";
+
 
 export default function MarketAnalysisPage() {
     const [activeFilter, setActiveFilter] = useState("todos");
     const [searchQuery, setSearchQuery] = useState("");
     const [processes, setProcesses] = useState<SecopProcess[]>([]);
-    const [metrics, setMetrics] = useState({ count: 0, avg_amount: 0 });
-    const [isLoading, setIsLoading] = useState(false);
+    const [metrics, setMetrics] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [userCompany, setUserCompany] = useState<{ id: string; name: string } | null>(null);
 
-    // Initial load
     useEffect(() => {
-        handleSearch("tecnologia"); // Default search to show something
+        // Load initial data
+        const loadData = async () => {
+            try {
+                const company = await getUserCompanyForFilter();
+                setUserCompany(company);
+
+                // Default search
+                handleSearch("tecnologia");
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+                setLoading(false);
+            }
+        };
+
+        loadData();
     }, []);
 
-    const handleSearch = async (query: string) => {
-        setIsLoading(true);
+    const handleSearch = async (query: string, isCompanyFilter: boolean = false) => {
+        setLoading(true);
         try {
-            const [procs, insights] = await Promise.all([
-                searchMarketOpportunities(query),
-                getMarketInsights(query)
-            ]);
+            let procs: SecopProcess[] = [];
+            let insights: any = null;
+
+            if (isCompanyFilter) {
+                // Search using company's UNSPSC codes
+                procs = await searchOpportunitiesByCompany();
+
+                // Calculate metrics from the results to ensure consistency
+                const count = procs.length;
+                const totalAmount = procs.reduce((sum, p) => sum + parseFloat(p.precio_base || '0'), 0);
+                const avgAmount = count > 0 ? totalAmount / count : 0;
+
+                insights = {
+                    count,
+                    avg_amount: avgAmount,
+                    top_entities: [] // We could calculate this too if needed
+                };
+            } else {
+                // Standard text search
+                [procs, insights] = await Promise.all([
+                    searchMarketOpportunities(query),
+                    getMarketInsights(query)
+                ]);
+            }
+
             setProcesses(procs);
             setMetrics(insights);
         } catch (error) {
-            console.error("Error searching:", error);
+            console.error("Error searching market:", error);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
+        }
+    };
+
+    const onSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            handleSearch(searchQuery);
         }
     };
 
     const onFilterChange = (filter: string) => {
-        setActiveFilter(filter.toLowerCase());
-        handleSearch(filter === 'Todos' ? 'tecnologia' : filter);
+        setActiveFilter(filter);
+        if (filter === 'todos') {
+            handleSearch('tecnologia');
+        } else if (filter === 'company' && userCompany) {
+            handleSearch(userCompany.name, true);
+        } else {
+            handleSearch(filter);
+        }
     };
 
+    const filters = [
+        { id: 'todos', label: 'Todos' },
+        ...(userCompany ? [{ id: 'company', label: userCompany.name }] : []),
+        { id: 'tecnologia', label: 'Tecnología' },
+        { id: 'infraestructura', label: 'Infraestructura' },
+        { id: 'suministros', label: 'Suministros' },
+        { id: 'consultoria', label: 'Consultoría' }
+    ];
     const formatCurrency = (amount: string) => {
         const val = parseFloat(amount);
         if (isNaN(val)) return "$0";
@@ -84,19 +142,19 @@ export default function MarketAnalysisPage() {
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
                         />
                     </div>
-                    <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {['Todos', 'Tecnologia', 'Infraestructura', 'Suministros', 'Consultoria'].map((filter) => (
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {filters.map((filter) => (
                             <button
-                                key={filter}
-                                onClick={() => onFilterChange(filter)}
+                                key={filter.id}
+                                onClick={() => onFilterChange(filter.id)}
                                 className={cn(
-                                    "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border",
-                                    activeFilter === filter.toLowerCase()
-                                        ? "bg-primary/20 border-primary text-primary"
-                                        : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
+                                    activeFilter === filter.id
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
                                 )}
                             >
-                                {filter}
+                                {filter.label}
                             </button>
                         ))}
                     </div>
@@ -110,7 +168,7 @@ export default function MarketAnalysisPage() {
                             <span className="text-xs font-medium text-blue-300">Oportunidades</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : metrics.count}
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : metrics?.count}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Encontradas</p>
                     </div>
@@ -120,7 +178,7 @@ export default function MarketAnalysisPage() {
                             <span className="text-xs font-medium text-purple-300">Valor Promedio</span>
                         </div>
                         <p className="text-xl font-bold text-foreground truncate">
-                            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(metrics.avg_amount.toString())}
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency((metrics?.avg_amount ?? 0).toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">COP</p>
                     </div>
@@ -133,46 +191,88 @@ export default function MarketAnalysisPage() {
                         Procesos Recientes (SECOP II)
                     </h3>
                     <div className="space-y-3">
-                        {isLoading ? (
+                        {loading ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                                 <p>Buscando oportunidades...</p>
                             </div>
                         ) : processes.length > 0 ? (
-                            processes.map((proc, i) => (
-                                <motion.div
-                                    key={proc.id_del_proceso}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.05 }}
-                                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors cursor-pointer group"
-                                    onClick={() => window.open(typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso, '_blank')}
-                                >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="px-2 py-1 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 uppercase">
-                                            {proc.fase}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">{new Date(proc.fecha_de_publicacion_del).toLocaleDateString()}</span>
-                                    </div>
-                                    <h4 className="text-sm font-medium text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
-                                        {proc.descripci_n_del_procedimiento}
-                                    </h4>
-                                    <div className="flex items-center gap-2 text-xs text-zinc-400 mb-3">
-                                        <Building2 className="w-3 h-3" />
-                                        <span className="truncate max-w-[200px]">{proc.entidad}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                        <div className="text-xs">
-                                            <span className="text-muted-foreground">Cuantía:</span>
-                                            <span className="text-foreground font-medium ml-1">{formatCurrency(proc.precio_base)}</span>
+                            processes.map((proc, i) => {
+                                // Simple client-side requirement evaluation based on keywords
+                                // In production, this would call the server action
+                                const hasInfraKeywords = proc.descripci_n_del_procedimiento?.toLowerCase().includes('infraestructura') ||
+                                    proc.descripci_n_del_procedimiento?.toLowerCase().includes('obra') ||
+                                    proc.descripci_n_del_procedimiento?.toLowerCase().includes('construccion');
+
+                                return (
+                                    <motion.div
+                                        key={`${proc.id_del_proceso}-${i}`}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.05 }}
+                                        className={cn(
+                                            "p-4 rounded-xl border transition-all",
+                                            hasInfraKeywords
+                                                ? "bg-green-500/5 border-green-500/30 hover:border-green-500/50"
+                                                : "bg-white/5 border-white/10 hover:border-primary/30"
+                                        )}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="px-2 py-1 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 uppercase">
+                                                    {proc.fase}
+                                                </span>
+                                                {hasInfraKeywords && (
+                                                    <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-500/30">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        <span>Cumples requisitos</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">{new Date(proc.fecha_de_publicacion_del).toLocaleDateString()}</span>
                                         </div>
-                                        <div className="flex items-center gap-1 text-xs text-primary">
-                                            <span>Ver en SECOP</span>
-                                            <ArrowLeft className="w-3 h-3 rotate-180" />
+                                        <h4 className="text-sm font-medium text-foreground mb-1 line-clamp-2">
+                                            {proc.descripci_n_del_procedimiento}
+                                        </h4>
+                                        <div className="flex items-center gap-2 text-xs text-zinc-400 mb-3">
+                                            <Building2 className="w-3 h-3" />
+                                            <span className="truncate max-w-[200px]">{proc.entidad}</span>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))
+                                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                            <div className="text-xs">
+                                                <span className="text-muted-foreground">Cuantía:</span>
+                                                <span className="text-foreground font-medium ml-1">{formatCurrency(proc.precio_base)}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        const url = typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso;
+                                                        window.open(url, '_blank');
+                                                    }}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 transition-colors"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    <span>SECOP</span>
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        const result = await addProcessToMissions(proc);
+                                                        if (result.success) {
+                                                            alert('✓ Proceso agregado a Misiones');
+                                                        } else {
+                                                            alert(`✗ ${result.error || 'Error al agregar'}`);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition-colors"
+                                                >
+                                                    <Target className="w-3 h-3" />
+                                                    <span>Misión</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })
                         ) : (
                             <div className="text-center py-8 text-muted-foreground">
                                 No se encontraron procesos recientes.

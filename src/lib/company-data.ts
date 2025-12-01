@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export interface CompanyData {
     id: string;
-    name: string;
+    company_name: string;
     nit: string;
     financial_indicators: {
         liquidity_index: number;

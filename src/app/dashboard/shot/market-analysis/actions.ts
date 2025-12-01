@@ -2,6 +2,7 @@
 
 import { getCompanyData, getCompanyContracts, getExperienceByUNSPSC, getContractStats } from "@/lib/company-data";
 import { createClient } from "@/lib/supabase/server";
+import { searchSecopProcesses, getMarketMetrics, searchOpportunitiesByUNSPSC } from "@/lib/socrata";
 
 export async function getMarketTrends() {
     const company = await getCompanyData();
@@ -111,6 +112,35 @@ export async function getMarketStats() {
     };
 }
 
-// Aliases for backward compatibility
-export const searchMarketOpportunities = getSectorAnalysis;
-export const getMarketInsights = getMarketTrends;
+// Market search functions for the search page
+export async function searchMarketOpportunities(query: string) {
+    // Integrate with SECOP API
+    return await searchSecopProcesses(query, 50);
+}
+
+export async function getMarketInsights(query: string) {
+    // Fetch real metrics from SECOP
+    return await getMarketMetrics(query);
+}
+
+// Get user company for filtering
+export async function getUserCompanyForFilter() {
+    const company = await getCompanyData();
+    if (!company) return null;
+
+    return {
+        id: company.id,
+        name: company.company_name,
+        unspsc_codes: company.unspsc_codes || []
+    };
+}
+
+// Search opportunities using company's UNSPSC codes
+export async function searchOpportunitiesByCompany() {
+    const company = await getCompanyData();
+    if (!company || !company.unspsc_codes || company.unspsc_codes.length === 0) {
+        return [];
+    }
+
+    return await searchOpportunitiesByUNSPSC(company.unspsc_codes, 50);
+}

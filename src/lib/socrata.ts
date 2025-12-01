@@ -70,3 +70,166 @@ export async function getMarketMetrics(query: string) {
         return { count: 0, avg_amount: 0 };
     }
 }
+
+// Search processes by entity name
+export async function searchProcessesByEntity(entityName: string, limit: number = 50): Promise<SecopProcess[]> {
+    try {
+        // Search for active processes from specific entity
+        const whereClause = `fase = 'Presentación de oferta' AND entidad LIKE '%${entityName}%'`;
+
+        const url = new URL(SOCRATA_API_URL);
+        url.searchParams.append("$limit", limit.toString());
+        url.searchParams.append("$where", whereClause);
+        url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
+
+        const headers: HeadersInit = {
+            "Accept": "application/json",
+        };
+
+        if (APP_TOKEN) {
+            headers["X-App-Token"] = APP_TOKEN;
+        }
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 3600 } });
+
+        if (!response.ok) {
+            console.error(`Socrata API error for entity ${entityName}: ${response.statusText}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data as SecopProcess[];
+
+    } catch (error) {
+        console.error(`Error fetching processes for entity ${entityName}:`, error);
+        return [];
+    }
+}
+
+// Get competitors by UNSPSC codes (finds companies participating in similar processes)
+export async function getCompetitorsByUNSPSC(unspscCodes: string[], limit: number = 100): Promise<SecopProcess[]> {
+    try {
+        if (unspscCodes.length === 0) return [];
+
+        // Search for processes with similar UNSPSC codes (using first 4 digits for category matching)
+        const unspscPrefixes = [...new Set(unspscCodes.map(code => code.slice(0, 4)))];
+        const searchQuery = unspscPrefixes.join(' OR ');
+
+        const whereClause = `fase IN ('Adjudicado', 'Celebrado')`;
+
+        const url = new URL(SOCRATA_API_URL);
+        url.searchParams.append("$limit", limit.toString());
+        url.searchParams.append("$q", searchQuery);
+        url.searchParams.append("$where", whereClause);
+        url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
+
+        const headers: HeadersInit = {
+            "Accept": "application/json",
+        };
+
+        if (APP_TOKEN) {
+            headers["X-App-Token"] = APP_TOKEN;
+        }
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 7200 } });
+
+        if (!response.ok) {
+            console.error(`Socrata API error for competitors: ${response.statusText}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data as SecopProcess[];
+
+    } catch (error) {
+        console.error("Error fetching competitors:", error);
+        return [];
+    }
+}
+
+// Get recent processes by UNSPSC codes (for alerts)
+export async function getRecentProcessesByUNSPSC(unspscCodes: string[], daysBack: number = 7, limit: number = 20): Promise<SecopProcess[]> {
+    try {
+        if (unspscCodes.length === 0) return [];
+
+        // Calculate date threshold
+        const dateThreshold = new Date();
+        dateThreshold.setDate(dateThreshold.getDate() - daysBack);
+        const dateStr = dateThreshold.toISOString().split('T')[0];
+
+        // Search for recent processes in company's sectors
+        const unspscPrefixes = [...new Set(unspscCodes.map(code => code.slice(0, 4)))];
+        const searchQuery = unspscPrefixes.join(' OR ');
+
+        const whereClause = `fase = 'Presentación de oferta' AND fecha_de_publicacion_del >= '${dateStr}'`;
+
+        const url = new URL(SOCRATA_API_URL);
+        url.searchParams.append("$limit", limit.toString());
+        url.searchParams.append("$q", searchQuery);
+        url.searchParams.append("$where", whereClause);
+        url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
+
+        const headers: HeadersInit = {
+            "Accept": "application/json",
+        };
+
+        if (APP_TOKEN) {
+            headers["X-App-Token"] = APP_TOKEN;
+        }
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 1800 } });
+
+        if (!response.ok) {
+            console.error(`Socrata API error for recent processes: ${response.statusText}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data as SecopProcess[];
+
+    } catch (error) {
+        console.error("Error fetching recent processes:", error);
+        return [];
+    }
+}
+
+// Search active opportunities by UNSPSC codes
+export async function searchOpportunitiesByUNSPSC(unspscCodes: string[], limit: number = 50): Promise<SecopProcess[]> {
+    try {
+        if (unspscCodes.length === 0) return [];
+
+        // Search for active processes in company's sectors
+        // Use full UNSPSC codes for exact matching as prefix search (4 digits) might fail
+        const searchQuery = unspscCodes.join(' OR ');
+
+        const whereClause = `fase = 'Presentación de oferta'`;
+
+        const url = new URL(SOCRATA_API_URL);
+        url.searchParams.append("$limit", limit.toString());
+        url.searchParams.append("$q", searchQuery);
+        url.searchParams.append("$where", whereClause);
+        url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
+
+        const headers: HeadersInit = {
+            "Accept": "application/json",
+        };
+
+        if (APP_TOKEN) {
+            headers["X-App-Token"] = APP_TOKEN;
+        }
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 1800 } });
+
+        if (!response.ok) {
+            console.error(`Socrata API error for UNSPSC search: ${response.statusText}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data as SecopProcess[];
+
+    } catch (error) {
+        console.error("Error fetching opportunities by UNSPSC:", error);
+        return [];
+    }
+}

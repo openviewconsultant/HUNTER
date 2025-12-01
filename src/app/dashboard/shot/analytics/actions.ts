@@ -39,7 +39,7 @@ export async function getAnalyticsData() {
 
     return {
         // Company name
-        companyName: company.name,
+        companyName: company.company_name,
 
         // Financial metrics
         capacityK: capacity,
