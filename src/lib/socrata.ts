@@ -199,14 +199,17 @@ export async function searchOpportunitiesByUNSPSC(unspscCodes: string[], limit: 
         if (unspscCodes.length === 0) return [];
 
         // Search for active processes in company's sectors
-        // Use full UNSPSC codes for exact matching as prefix search (4 digits) might fail
-        const searchQuery = unspscCodes.join(' OR ');
+        // Use LIKE to match codes regardless of version prefix (e.g. V1.80111600)
+        // Construct OR clause for all codes
+        const codeConditions = unspscCodes.map(code => `codigo_principal_de_categoria LIKE '%${code}%'`);
+        const codesWhere = `(${codeConditions.join(' OR ')})`;
 
-        const whereClause = `fase = 'Presentación de oferta'`;
+        const whereClause = `fase = 'Presentación de oferta' AND ${codesWhere}`;
 
         const url = new URL(SOCRATA_API_URL);
         url.searchParams.append("$limit", limit.toString());
-        url.searchParams.append("$q", searchQuery);
+        // Remove $q to rely solely on the specific column filter
+        // url.searchParams.append("$q", searchQuery); 
         url.searchParams.append("$where", whereClause);
         url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
 
