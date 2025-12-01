@@ -104,10 +104,16 @@ export async function getRankingStats() {
 }
 
 // Aliases for backward compatibility
-// Aliases for backward compatibility
+
 export const getUserRanking = getRankingStats;
 
-export async function getSectorRanking(sector: string) {
+export interface SectorRankingItem {
+    id: string;
+    name: string;
+    amount: number;
+}
+
+export async function getSectorRanking(sector: string): Promise<SectorRankingItem[]> {
     // TODO: Implement actual sector ranking based on Socrata data
     // For now return empty to fix build and show "No data" state
     return [];
