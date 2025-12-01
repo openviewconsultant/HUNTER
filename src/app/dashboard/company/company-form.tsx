@@ -853,23 +853,22 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         </p>
                                     </div>
 
-                                    {/* Manage Contracts Button - Always visible */}
-                                    <div className="flex flex-col items-center justify-center py-12">
-                                        <motion.button
-                                            initial={{ scale: 0, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            whileHover={{ scale: 1.05 }}
-                                            onClick={() => setIsManagingContracts(true)}
-                                            className="flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-xl shadow-xl hover:bg-primary/90 transition-all"
-                                        >
-                                            <FileText className="w-6 h-6" />
-                                            <span className="font-semibold text-lg">Gestionar Experiencia</span>
-                                        </motion.button>
-                                        {contracts.length > 0 && (
-                                            <p className="text-sm text-muted-foreground mt-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">
                                                 {contracts.length} contrato(s) registrado(s)
                                             </p>
-                                        )}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setIsManagingContracts(true)}
+                                                className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl font-medium"
+                                                title="Gestionar Experiencia"
+                                            >
+                                                <FileText className="w-5 h-5" />
+                                                <span>Gestionar Experiencia</span>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-between mb-4">

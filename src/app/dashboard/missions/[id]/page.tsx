@@ -111,7 +111,7 @@ export default async function MissionDetailPage({ params }: { params: { id: stri
                                         <div>
                                             <h4 className="font-semibold text-yellow-900 dark:text-yellow-400">Experiencia Específica</h4>
                                             <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                                        Falta 1 contrato de obra civil > 500 SMMLV.
+                                                Falta 1 contrato de obra civil &gt; 500 SMMLV.
                                                 <br />
                                                 <span className="font-medium mt-1 block">Recomendación IA:</span>
                                                 Revisar consorcio con empresa aliada "Constructora X".
