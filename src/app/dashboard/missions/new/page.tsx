@@ -9,9 +9,13 @@ import { Rocket, BookOpen, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createProject } from "../actions";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function NewMissionPage() {
     const [isLoading, setIsLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const initialName = searchParams.get('name') || '';
+    const initialTenderId = searchParams.get('tenderId') || '';
 
     async function handleSubmit(formData: FormData) {
         setIsLoading(true);
@@ -24,16 +28,18 @@ export default function NewMissionPage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 p-6">
-            <div className="flex items-center gap-4">
-                <Link href="/dashboard/missions">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
+        <div className="w-full mx-auto space-y-6 p-6">
+            <div className="flex-shrink-0 mb-6">
+                <Link
+                    href="/dashboard/missions"
+                    className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-4 text-sm"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Volver a Misiones
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Nueva Misión</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-2xl font-bold text-foreground">Nueva Misión</h1>
+                    <p className="text-zinc-400 text-sm">
                         Configura tu estrategia para esta licitación.
                     </p>
                 </div>
@@ -54,6 +60,7 @@ export default function NewMissionPage() {
                                 id="name"
                                 name="name"
                                 placeholder="Ej: Licitación Alcaldía de Bogotá - Vías"
+                                defaultValue={initialName}
                                 required
                             />
                         </div>
@@ -64,6 +71,7 @@ export default function NewMissionPage() {
                                 id="tenderId"
                                 name="tenderId"
                                 placeholder="Pega el ID de SECOP o selecciona de tus guardados"
+                                defaultValue={initialTenderId}
                             />
                             <p className="text-xs text-muted-foreground">
                                 Vincula esta misión a un proceso real para activar el Gap Analysis automático.

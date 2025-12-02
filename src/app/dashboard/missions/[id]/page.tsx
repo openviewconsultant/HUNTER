@@ -2,12 +2,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Rocket, CheckCircle2, AlertCircle, FileText, Plus } from "lucide-react";
+import { CheckCircle2, Clock, FileText, Layout, Plus, Settings, AlertCircle } from "lucide-react";
+import BoardView from "./board-view";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
 async function getProjectDetails(id: string) {
     const supabase = await createClient();
+
+    // Fetch project with stages and tasks
     const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -23,7 +26,30 @@ async function getProjectDetails(id: string) {
         .single();
 
     if (error || !data) return null;
-    return data;
+
+    // Fetch stages with tasks
+    const { data: stages } = await supabase
+        .from('project_stages')
+        .select(`
+            id,
+            name,
+            order,
+            color,
+            tasks:project_tasks (
+                id,
+                title,
+                description,
+                priority,
+                status,
+                is_requirement,
+                requirement_type,
+                requirement_met
+            )
+        `)
+        .eq('project_id', id)
+        .order('order');
+
+    return { ...data, stages };
 }
 
 export default async function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -67,25 +93,7 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                 </div>
 
                 <TabsContent value="board" className="flex-1 mt-4">
-                    <div className="grid grid-cols-4 gap-4 h-full overflow-x-auto pb-4">
-                        {/* Kanban Columns - Mocked for UI structure */}
-                        {['Por Hacer', 'En Progreso', 'Revisión', 'Listo'].map((col) => (
-                            <div key={col} className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 h-full min-w-[280px]">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-semibold text-sm">{col}</h3>
-                                    <Badge variant="secondary" className="text-xs">0</Badge>
-                                </div>
-
-                                {/* Empty State for Column */}
-                                <div className="flex-1 flex items-center justify-center border-2 border-dashed rounded-md border-muted-foreground/20">
-                                    <Button variant="ghost" size="sm" className="text-muted-foreground">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Añadir Tarea
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <BoardView initialStages={project.stages || []} />
                 </TabsContent>
 
                 <TabsContent value="gap" className="mt-4">

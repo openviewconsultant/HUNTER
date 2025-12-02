@@ -15,6 +15,27 @@ export function CompetitorHistoryModal({ unspscCodes, processTitle }: Competitor
     const [loading, setLoading] = useState(false);
     const [history, setHistory] = useState<CompetitorInfo[]>([]);
     const [hasLoaded, setHasLoaded] = useState(false);
+    const [hasData, setHasData] = useState<boolean | null>(null); // null = not checked, true = has data, false = no data
+
+    // Check if there's historical data available
+    useEffect(() => {
+        const checkData = async () => {
+            if (!unspscCodes || unspscCodes.length === 0) {
+                setHasData(false);
+                return;
+            }
+
+            try {
+                const data = await getHistoricalContracts(unspscCodes);
+                setHasData(data.length > 0);
+            } catch (error) {
+                console.error("Error checking historical data:", error);
+                setHasData(false);
+            }
+        };
+
+        checkData();
+    }, [unspscCodes]);
 
     useEffect(() => {
         if (isOpen && !hasLoaded) {
@@ -46,6 +67,16 @@ export function CompetitorHistoryModal({ unspscCodes, processTitle }: Competitor
             maximumFractionDigits: 0
         }).format(amount);
     };
+
+    // Don't render button if no UNSPSC codes or no historical data available
+    if (!unspscCodes || unspscCodes.length === 0 || hasData === false) {
+        return null;
+    }
+
+    // Show loading state while checking for data
+    if (hasData === null) {
+        return null; // Or could show a loading skeleton
+    }
 
     return (
         <>

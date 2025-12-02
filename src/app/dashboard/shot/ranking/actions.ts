@@ -72,6 +72,53 @@ export async function getRankedTenders() {
     return rankedTenders;
 }
 
+import { getCompetitorsByUNSPSC, SecopProcess } from "@/lib/socrata";
+
+// Helper to determine sector from UNSPSC codes
+function determineSector(unspscCodes: string[]): string {
+    if (!unspscCodes || unspscCodes.length === 0) return "General";
+
+    // Map common UNSPSC families to sectors
+    const sectorMap: Record<string, string> = {
+        '72': 'Construcción e Infraestructura',
+        '30': 'Construcción e Infraestructura', // Materiales estructurales
+        '95': 'Construcción e Infraestructura', // Terrenos y edificios
+        '43': 'Tecnología y Telecomunicaciones',
+        '81': 'Tecnología y Telecomunicaciones', // Servicios de ingeniería
+        '80': 'Servicios de Gestión y Profesionales',
+        '85': 'Servicios de Salud',
+        '50': 'Alimentos y Bebidas',
+        '53': 'Ropa, Maletas y Productos de Aseo',
+        '44': 'Equipos de Oficina y Accesorios',
+        '39': 'Suministros y Equipos Eléctricos',
+        '41': 'Equipos de Laboratorio y Medición'
+    };
+
+    // Count occurrences of each sector
+    const sectorCounts: Record<string, number> = {};
+
+    unspscCodes.forEach(code => {
+        const family = code.substring(0, 2);
+        const sector = sectorMap[family];
+        if (sector) {
+            sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+        }
+    });
+
+    // Find the most frequent sector
+    let maxCount = 0;
+    let bestSector = "General";
+
+    Object.entries(sectorCounts).forEach(([sector, count]) => {
+        if (count > maxCount) {
+            maxCount = count;
+            bestSector = sector;
+        }
+    });
+
+    return bestSector;
+}
+
 export async function getRankingStats() {
     const company = await getCompanyData();
     const contracts = await getCompanyContracts();
@@ -85,6 +132,22 @@ export async function getRankingStats() {
     }
 
     const rankedTenders = await getRankedTenders();
+    const sector = determineSector(company.unspsc_codes || []);
+
+    // Calculate real metrics based on historical data vs competitors
+    // This is an estimation since we don't have full market data
+    const totalContracted = contracts.reduce((sum, c) => sum + (c.contract_value || 0), 0);
+
+    // Fetch competitors to compare
+    const competitors = await getSectorRanking(sector, company.unspsc_codes || []);
+
+    // Estimate rank based on where the company falls in the competitor list
+    let rank = competitors.findIndex(c => c.amount < totalContracted);
+    if (rank === -1) rank = competitors.length;
+    rank += 1; // 1-based index
+
+    // Calculate percentile (inverse of rank)
+    const percentile = Math.max(1, Math.round(100 - (rank / (competitors.length + 1) * 100)));
 
     return {
         totalEvaluated: rankedTenders.length,
@@ -92,14 +155,11 @@ export async function getRankingStats() {
         avgScore: rankedTenders.length > 0
             ? Math.round(rankedTenders.reduce((sum, t) => sum + t.matchScore, 0) / rankedTenders.length)
             : 0,
-        // Add fields expected by the UI
-        globalRank: 42, // Mock rank
-        percentile: "Top 15%",
-        competitivenessScore: rankedTenders.length > 0
-            ? Math.round((rankedTenders.reduce((sum, t) => sum + t.matchScore, 0) / rankedTenders.length) / 10)
-            : 0,
-        growth: 12, // Mock growth
-        sector: "Tecnología" // Mock sector or derive from UNSPSC
+        globalRank: rank,
+        percentile: `Top ${percentile}%`,
+        competitivenessScore: Math.min(10, Math.round(percentile / 10)),
+        growth: 12, // Still mock as we need year-over-year data
+        sector: sector
     };
 }
 
@@ -113,8 +173,36 @@ export interface SectorRankingItem {
     amount: number;
 }
 
-export async function getSectorRanking(sector: string): Promise<SectorRankingItem[]> {
-    // TODO: Implement actual sector ranking based on Socrata data
-    // For now return empty to fix build and show "No data" state
-    return [];
+export async function getSectorRanking(sector: string, unspscCodes?: string[]): Promise<SectorRankingItem[]> {
+    // If codes not provided, try to get from company data
+    if (!unspscCodes) {
+        const company = await getCompanyData();
+        unspscCodes = company?.unspsc_codes || [];
+    }
+
+    if (unspscCodes.length === 0) return [];
+
+    // Fetch real competitors from SECOP
+    const processes = await getCompetitorsByUNSPSC(unspscCodes, 100);
+
+    // Aggregate by supplier
+    const supplierMap = new Map<string, number>();
+
+    processes.forEach((proc: SecopProcess) => {
+        if (proc.nombre_del_proveedor) {
+            const amount = parseFloat(proc.valor_total_adjudicacion || proc.precio_base || '0');
+            const current = supplierMap.get(proc.nombre_del_proveedor) || 0;
+            supplierMap.set(proc.nombre_del_proveedor, current + amount);
+        }
+    });
+
+    // Convert to array and sort
+    return Array.from(supplierMap.entries())
+        .map(([name, amount]) => ({
+            id: name,
+            name: name,
+            amount: amount
+        }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 10);
 }

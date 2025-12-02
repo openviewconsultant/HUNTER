@@ -4,15 +4,17 @@ import { motion } from "framer-motion";
 import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2, ExternalLink, Target, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { searchMarketOpportunities, getMarketInsights, getUserCompanyForFilter, searchOpportunitiesByCompany } from "./actions";
 import { SecopProcess } from "@/lib/socrata";
 import { evaluateProcessRequirements, addProcessToMissions } from "./process-actions";
 import { CompetitorHistoryModal } from "./competitor-history-modal";
-import { extractUNSPSCFromProcess } from "./match-helpers";
+import { extractUNSPSCFromProcess, getSuggestedDeliverables } from "./match-helpers";
 
 
 export default function MarketAnalysisPage() {
+    const router = useRouter();
     const [activeFilter, setActiveFilter] = useState("todos");
     const [searchQuery, setSearchQuery] = useState("");
     const [processes, setProcesses] = useState<SecopProcess[]>([]);
@@ -107,9 +109,9 @@ export default function MarketAnalysisPage() {
     };
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex flex-col mr-4">
+        <div className="min-h-screen flex flex-col">
             {/* Header with Back Button */}
-            <div className="flex-shrink-0 mb-6">
+            <div className="flex-shrink-0 mb-6 px-6 pt-4">
                 <Link
                     href="/dashboard/shot"
                     className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-4 text-sm"
@@ -128,7 +130,7 @@ export default function MarketAnalysisPage() {
             </div>
 
             {/* Main Content - Mobile First Grid */}
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
 
                 {/* Search Section */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 sticky top-0 backdrop-blur-md z-10">
@@ -241,6 +243,26 @@ export default function MarketAnalysisPage() {
                                         {/* Match Analysis Details */}
                                         {matchAnalysis && (
                                             <>
+                                                {/* Deliverables Section */}
+                                                <div className="mb-3">
+                                                    <h5 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
+                                                        <CheckCircle2 className="w-3 h-3 text-primary" />
+                                                        Entregables / Actividades
+                                                    </h5>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {getSuggestedDeliverables(proc).slice(0, 4).map((del, idx) => (
+                                                            <span key={idx} className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
+                                                                {del}
+                                                            </span>
+                                                        ))}
+                                                        {getSuggestedDeliverables(proc).length > 4 && (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 text-muted-foreground border border-white/10">
+                                                                +{getSuggestedDeliverables(proc).length - 4} más
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
                                                 {/* Reasons for Match */}
                                                 {matchAnalysis.reasons.length > 0 && (
                                                     <div className="mb-3 p-2 rounded bg-green-500/5 border border-green-500/20">
@@ -290,18 +312,17 @@ export default function MarketAnalysisPage() {
                                                     <span>SECOP</span>
                                                 </button>
                                                 <button
-                                                    onClick={async () => {
-                                                        const result = await addProcessToMissions(proc);
-                                                        if (result.success) {
-                                                            alert('✓ Proceso agregado a Misiones');
-                                                        } else {
-                                                            alert(`✗ ${result.error || 'Error al agregar'}`);
-                                                        }
+                                                    onClick={() => {
+                                                        const params = new URLSearchParams({
+                                                            name: proc.descripci_n_del_procedimiento,
+                                                            tenderId: proc.id_del_proceso || ''
+                                                        });
+                                                        router.push(`/dashboard/missions/new?${params.toString()}`);
                                                     }}
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition-colors"
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/30 rounded-lg hover:bg-primary/20 transition-colors"
                                                 >
                                                     <Target className="w-3 h-3" />
-                                                    <span>Misión</span>
+                                                    <span>Aplicar</span>
                                                 </button>
                                                 <CompetitorHistoryModal
                                                     unspscCodes={extractUNSPSCFromProcess(proc)}
