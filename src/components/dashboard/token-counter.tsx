@@ -117,9 +117,14 @@ export default function TokenCounter() {
                     <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                             className="h-full bg-gradient-to-r from-primary to-primary/50 transition-all duration-500"
-                            style={{ width: '65%' }}
+                            style={{
+                                width: usage ? `${Math.min((usage.total_tokens / 1000000) * 100, 100)}%` : '0%'
+                            }}
                         ></div>
                     </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 text-right">
+                        Ref: 1M Tokens
+                    </p>
                 </div>
 
                 {/* Breakdown */}
@@ -130,7 +135,9 @@ export default function TokenCounter() {
                             {usage ? formatNumber(usage.prompt_tokens) : '0'}
                         </div>
                         <div className="text-xs text-primary mt-1">
-                            {usage ? Math.round((usage.prompt_tokens / usage.total_tokens) * 100) : 0}%
+                            {usage && usage.total_tokens > 0
+                                ? Math.round((usage.prompt_tokens / usage.total_tokens) * 100)
+                                : 0}%
                         </div>
                     </div>
                     <div className="p-3 rounded-lg bg-background/30 border border-border/50">
@@ -139,7 +146,9 @@ export default function TokenCounter() {
                             {usage ? formatNumber(usage.completion_tokens) : '0'}
                         </div>
                         <div className="text-xs text-primary mt-1">
-                            {usage ? Math.round((usage.completion_tokens / usage.total_tokens) * 100) : 0}%
+                            {usage && usage.total_tokens > 0
+                                ? Math.round((usage.completion_tokens / usage.total_tokens) * 100)
+                                : 0}%
                         </div>
                     </div>
                 </div>

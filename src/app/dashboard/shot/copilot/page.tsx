@@ -1,8 +1,32 @@
 import { getProjects } from "@/app/dashboard/missions/actions";
 import { CopilotClient } from "./copilot-client";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function CopilotPage() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Data handling
     const missions = await getProjects();
+
+    // Get company info
+    let company = null;
+    if (user) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+        if (profile) {
+            const { data: companyData } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('profile_id', profile.id)
+                .single();
+            company = companyData;
+        }
+    }
 
     return (
         <div className="flex flex-col gap-2">
@@ -13,7 +37,7 @@ export default async function CopilotPage() {
                 </p>
             </div>
 
-            <CopilotClient missions={missions} />
+            <CopilotClient missions={missions} company={company} />
         </div>
     );
 }

@@ -166,9 +166,9 @@ export async function searchMarketOpportunities(query: string, filters?: any) {
     });
 }
 
-export async function getMarketInsights(query: string) {
+export async function getMarketInsights(query: string, filters?: any) {
     // Fetch real metrics from SECOP
-    return await getMarketMetrics(query);
+    return await getMarketMetrics(query, filters);
 }
 
 // Get user company for filtering

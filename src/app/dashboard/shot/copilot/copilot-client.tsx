@@ -8,7 +8,11 @@ import { Bot, Send, FileText, CheckSquare, PenTool, Rocket, ChevronRight, AlertC
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 // import { ScrollArea } from "@/components/ui/scroll-area";
-import { AIEngine } from "@/lib/ai-engine";
+import { chatWithMissionCopilot } from "./actions";
+import ReactMarkdown from 'react-markdown';
+
+
+import { jsPDF } from "jspdf";
 
 interface Project {
     id: string;
@@ -21,6 +25,7 @@ interface Project {
     entity?: string;
     amount?: number;
     deadline?: string;
+    processId?: string;
 }
 
 interface Message {
@@ -29,7 +34,7 @@ interface Message {
     timestamp: Date;
 }
 
-export function CopilotClient({ missions }: { missions: Project[] }) {
+export function CopilotClient({ missions, company }: { missions: Project[], company?: any }) {
     const [selectedMission, setSelectedMission] = useState<Project | null>(null);
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -57,22 +62,38 @@ export function CopilotClient({ missions }: { missions: Project[] }) {
         if (!inputValue.trim() || isLoading) return;
 
         const userMessage = inputValue.trim();
+        const currentHistory = messages; // Snapshot history before adding new user msg for the API (or include it depending on logic)
+
         setInputValue('');
         setMessages(prev => [...prev, { role: 'user', content: userMessage, timestamp: new Date() }]);
         setIsLoading(true);
 
-        // TODO: Implement actual AI integration
-        // For now, simulate a response
-        setTimeout(() => {
+        try {
+            const missionCtx = selectedMission ? {
+                name: selectedMission.name,
+                description: selectedMission.description,
+                tenderTitle: selectedMission.tenderTitle,
+                entity: selectedMission.entity,
+                processId: selectedMission.processId
+            } : undefined;
+
+            const response = await chatWithMissionCopilot(userMessage, currentHistory, missionCtx, company);
+
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: selectedMission
-                    ? `Entendido. En el contexto de la misión "${selectedMission.name}", ${userMessage.includes('pliego') ? 'puedo ayudarte a analizar los pliegos.' : 'estoy procesando tu solicitud.'}`
-                    : 'Por favor selecciona una misión para darte una respuesta más específica, o pregúntame sobre normativa general.',
+                content: response.content || "Lo siento, no pude generar una respuesta.",
                 timestamp: new Date()
             }]);
+        } catch (error) {
+            console.error("Chat error:", error);
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: "Error de conexión con el asistente.",
+                timestamp: new Date()
+            }]);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     const handleAction = (action: string) => {
@@ -86,14 +107,28 @@ export function CopilotClient({ missions }: { missions: Project[] }) {
         }
 
         const prompts: Record<string, string> = {
-            'pliegos': `Necesito ayuda para responder a los pliegos de la misión "${selectedMission.name}". ¿Qué puntos debo tener en cuenta?`,
-            'observacion': `Ayúdame a redactar una observación para la licitación de "${selectedMission.tenderTitle || selectedMission.name}".`,
+            'pliegos': `Genera una carta de presentación formal para la licitación "${selectedMission.tenderTitle || selectedMission.name}", utilizando la información de mi empresa para demostrar idoneidad. Incluye el objeto, el compromiso de cumplimiento y la firma del representante legal.`,
+            'observacion': `Ayúdame a redactar una observación formal para la licitación "${selectedMission.tenderTitle || selectedMission.name}".`,
             'matriz': `Genera una estructura para la matriz de cumplimiento de "${selectedMission.name}".`
         };
 
-        setInputValue(prompts[action] || '');
-        // Optionally auto-send:
-        // handleSendMessage(); 
+        const prompt = prompts[action] || '';
+        setInputValue(prompt);
+    };
+
+    const downloadPDF = (content: string) => {
+        const doc = new jsPDF();
+
+        // Config basic formatting
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+
+        // Simple text wrapping (could be improved with html2canvas for rich text)
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const splitText = doc.splitTextToSize(content.replace(/\*\*/g, ''), pageWidth - 40); // Simple markdown clean
+
+        doc.text(splitText, 20, 20);
+        doc.save("documento_generado_hunter.pdf");
     };
 
     return (
@@ -219,16 +254,37 @@ export function CopilotClient({ missions }: { missions: Project[] }) {
                             )}>
                                 {msg.role === 'assistant' ? <Bot className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full bg-slate-400" />}
                             </div>
-                            <div className={cn(
-                                "rounded-2xl p-4 text-sm shadow-sm",
-                                msg.role === 'assistant'
-                                    ? "bg-card border text-card-foreground rounded-tl-none"
-                                    : "bg-primary text-primary-foreground rounded-tr-none"
-                            )}>
-                                {msg.content}
-                                <span className="block text-[10px] opacity-50 mt-2 text-right">
-                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                            <div className="space-y-2">
+                                <div className={cn(
+                                    "rounded-2xl p-4 text-sm shadow-sm",
+                                    msg.role === 'assistant'
+                                        ? "bg-card border text-card-foreground rounded-tl-none"
+                                        : "bg-primary text-primary-foreground rounded-tr-none"
+                                )}>
+                                    {msg.role === 'assistant' ? (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                                            <ReactMarkdown>
+                                                {msg.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        msg.content
+                                    )}
+                                    <span className="block text-[10px] opacity-50 mt-2 text-right" suppressHydrationWarning>
+                                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                                {msg.role === 'assistant' && msg.content.length > 100 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs text-muted-foreground hover:text-primary gap-1"
+                                        onClick={() => downloadPDF(msg.content)}
+                                    >
+                                        <FileText className="h-3 w-3" />
+                                        Descargar como PDF
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}

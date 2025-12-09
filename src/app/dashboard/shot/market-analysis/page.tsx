@@ -73,7 +73,7 @@ export default function MarketAnalysisPage() {
                 // Standard text search
                 [procs, insights] = await Promise.all([
                     searchMarketOpportunities(query, currentFilters),
-                    getMarketInsights(query)
+                    getMarketInsights(query, currentFilters)
                 ]);
             }
 

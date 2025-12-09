@@ -108,18 +108,40 @@ export async function searchSecopProcesses(query: string, limit: number = 20, fi
     }
 }
 
-export async function getMarketMetrics(query: string) {
-    // Example aggregation query
-    // Calculate average amount and count
+export async function getMarketMetrics(query: string, filters?: MarketFilters) {
+    // Aggregate metrics with filters
     try {
-        const whereClause = `fase = 'Presentación de oferta'`;
+        // Calculate date threshold (same as search)
+        const dateThreshold = new Date();
+        const isHistorySearch = filters?.status === 'awarded' || filters?.status === 'all';
+        dateThreshold.setMonth(dateThreshold.getMonth() - (isHistorySearch ? 6 : 1));
+        const dateStr = dateThreshold.toISOString().split('T')[0];
+
+        let whereClause = `fecha_de_publicacion_del >= '${dateStr}'`;
+
+        // Apply filters
+        if (filters?.status === 'active' || !filters?.status) {
+            whereClause += ` AND fase = 'Presentación de oferta'`;
+        } else if (filters?.status === 'awarded') {
+            whereClause += ` AND (fase = 'Adjudicado' OR fase = 'Celebrado')`;
+        }
+
+        if (filters?.minAmount) {
+            whereClause += ` AND precio_base >= ${filters.minAmount}`;
+        }
+        if (filters?.maxAmount) {
+            whereClause += ` AND precio_base <= ${filters.maxAmount}`;
+        }
 
         const url = new URL(SOCRATA_API_URL);
         url.searchParams.append("$select", "count(*) as count, avg(precio_base) as avg_amount");
         url.searchParams.append("$q", query);
         url.searchParams.append("$where", whereClause);
 
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), { next: { revalidate: 3600 } });
+
+        if (!response.ok) return { count: 0, avg_amount: 0 };
+
         const data = await response.json();
 
         return data[0] || { count: 0, avg_amount: 0 };

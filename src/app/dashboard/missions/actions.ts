@@ -32,7 +32,8 @@ export async function getProjects() {
             tender:tender_id (
                 title,
                 amount,
-                entity_name
+                entity_name,
+                secop_id
             )
         `)
         .eq('company_id', company.id)
@@ -53,7 +54,8 @@ export async function getProjects() {
         tenderTitle: project.tender?.title,
         entity: project.tender?.entity_name,
         amount: project.tender?.amount,
-        deadline: project.deadline_date
+        deadline: project.deadline_date,
+        processId: project.secop_process_id || project.tender?.secop_id
     }));
 }
 
