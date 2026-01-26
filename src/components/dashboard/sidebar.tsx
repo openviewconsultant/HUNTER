@@ -20,7 +20,8 @@ import {
     Activity,
     Trophy,
     PieChart,
-    Calendar
+    Calendar,
+    Calculator
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -82,6 +83,11 @@ const sidebarLinks: SidebarItem[] = [
         name: "Misiones",
         href: "/dashboard/missions",
         icon: Rocket,
+    },
+    {
+        name: "Presupuestos (APU)",
+        href: "/dashboard/apu",
+        icon: Calculator,
     },
     {
         name: "Calendario",
