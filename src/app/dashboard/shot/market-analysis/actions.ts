@@ -142,7 +142,9 @@ export async function searchMarketOpportunities(query: string, filters?: any) {
                     matchScore: matchAnalysis.matchScore,
                     reasons: [...matchAnalysis.reasons],
                     warnings: [...matchAnalysis.warnings],
-                    advice: matchAnalysis.advice
+                    advice: matchAnalysis.advice,
+                    isCorporate: matchAnalysis.isCorporate,
+                    isActionable: matchAnalysis.isActionable
                 };
 
                 return {
@@ -159,8 +161,16 @@ export async function searchMarketOpportunities(query: string, filters?: any) {
         })
     );
 
-    // Sort by match score (highest first)
+    // Sort by: 1. Actionable, 2. Corporate, 3. Match Score
     return processesWithAnalysis.sort((a, b) => {
+        const actionableA = a.matchAnalysis?.isActionable ? 1 : 0;
+        const actionableB = b.matchAnalysis?.isActionable ? 1 : 0;
+        if (actionableA !== actionableB) return actionableB - actionableA;
+
+        const corporateA = a.matchAnalysis?.isCorporate ? 1 : 0;
+        const corporateB = b.matchAnalysis?.isCorporate ? 1 : 0;
+        if (corporateA !== corporateB) return corporateB - corporateA;
+
         const scoreA = a.matchAnalysis?.matchScore || 0;
         const scoreB = b.matchAnalysis?.matchScore || 0;
         return scoreB - scoreA;
@@ -211,7 +221,9 @@ export async function searchOpportunitiesByCompany() {
                     matchScore: matchAnalysis.matchScore,
                     reasons: [...matchAnalysis.reasons],
                     warnings: [...matchAnalysis.warnings],
-                    advice: matchAnalysis.advice
+                    advice: matchAnalysis.advice,
+                    isCorporate: matchAnalysis.isCorporate,
+                    isActionable: matchAnalysis.isActionable
                 };
 
                 return {
@@ -228,8 +240,16 @@ export async function searchOpportunitiesByCompany() {
         })
     );
 
-    // Sort by match score (highest first)
+    // Sort by: 1. Actionable, 2. Corporate, 3. Match Score
     return processesWithAnalysis.sort((a, b) => {
+        const actionableA = a.matchAnalysis?.isActionable ? 1 : 0;
+        const actionableB = b.matchAnalysis?.isActionable ? 1 : 0;
+        if (actionableA !== actionableB) return actionableB - actionableA;
+
+        const corporateA = a.matchAnalysis?.isCorporate ? 1 : 0;
+        const corporateB = b.matchAnalysis?.isCorporate ? 1 : 0;
+        if (corporateA !== corporateB) return corporateB - corporateA;
+
         const scoreA = a.matchAnalysis?.matchScore || 0;
         const scoreB = b.matchAnalysis?.matchScore || 0;
         return scoreB - scoreA;

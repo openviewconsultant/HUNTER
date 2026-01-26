@@ -98,6 +98,8 @@ export async function getOpportunities() {
                 matchScore: score,
                 reason: reason || analysis.reasons[0] || analysis.warnings[0] || "Compatible con tu perfil",
                 advice: analysis.advice,
+                isCorporate: analysis.isCorporate,
+                isActionable: analysis.isActionable,
                 description: proc.descripci_n_del_procedimiento, // Keep description for AI analysis
                 aiAnalysis: null as TenderAnalysis | null
             };
@@ -106,8 +108,17 @@ export async function getOpportunities() {
 
     // Filter and sort top opportunities
     const topOpportunities = scoredProcesses
-        .filter(opp => opp.matchScore >= 70)
-        .sort((a, b) => b.matchScore - a.matchScore)
+        .sort((a, b) => {
+            const actionableA = a.isActionable ? 1 : 0;
+            const actionableB = b.isActionable ? 1 : 0;
+            if (actionableA !== actionableB) return actionableB - actionableA;
+
+            const corporateA = a.isCorporate ? 1 : 0;
+            const corporateB = b.isCorporate ? 1 : 0;
+            if (corporateA !== corporateB) return corporateB - corporateA;
+
+            return b.matchScore - a.matchScore;
+        })
         .slice(0, 10);
 
     // Perform AI analysis on the top 3 opportunities to save tokens/time

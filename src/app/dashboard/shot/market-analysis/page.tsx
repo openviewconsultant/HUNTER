@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2, ExternalLink, Target, CheckCircle2, Bot } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { searchMarketOpportunities, getMarketInsights, getUserCompanyForFilter, searchOpportunitiesByCompany } from "./actions";
@@ -25,6 +25,10 @@ export default function MarketAnalysisPage() {
     const [minAmount, setMinAmount] = useState<string>("");
     const [maxAmount, setMaxAmount] = useState<string>("");
     const [showFilters, setShowFilters] = useState(false);
+
+    // New Filters
+    const [showCorporateOnly, setShowCorporateOnly] = useState(true);
+    const [hideNonActionable, setHideNonActionable] = useState(false);
 
     useEffect(() => {
         // Load initial data
@@ -117,6 +121,18 @@ export default function MarketAnalysisPage() {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
     };
 
+    const filteredProcesses = useMemo(() => {
+        return processes.filter(proc => {
+            const analysis = (proc as any).matchAnalysis;
+            if (!analysis) return true;
+
+            const corporateOk = !showCorporateOnly || analysis.isCorporate;
+            const actionableOk = !hideNonActionable || analysis.isActionable;
+
+            return corporateOk && actionableOk;
+        });
+    }, [processes, showCorporateOnly, hideNonActionable]);
+
     return (
         <div className="min-h-screen flex flex-col">
             {/* Header with Back Button */}
@@ -191,16 +207,6 @@ export default function MarketAnalysisPage() {
                             className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden"
                         >
                             <div className="space-y-2">
-                                <label className="text-xs text-muted-foreground">Cuantía Mínima (COP)</label>
-                                <input
-                                    type="number"
-                                    placeholder="0"
-                                    value={minAmount}
-                                    onChange={(e) => setMinAmount(e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                                />
-                            </div>
-                            <div className="space-y-2">
                                 <label className="text-xs text-muted-foreground">Cuantía Máxima (COP)</label>
                                 <input
                                     type="number"
@@ -210,7 +216,46 @@ export default function MarketAnalysisPage() {
                                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                                 />
                             </div>
-                            <div className="col-span-full flex justify-end">
+
+                            {/* Corporate & Actionable Toggles */}
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium">Solo Empresas</span>
+                                    <span className="text-[10px] text-muted-foreground italic">Oculta personas naturales</span>
+                                </div>
+                                <button
+                                    onClick={() => setShowCorporateOnly(!showCorporateOnly)}
+                                    className={cn(
+                                        "w-10 h-5 rounded-full transition-colors relative",
+                                        showCorporateOnly ? "bg-primary" : "bg-zinc-700"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "absolute top-1 w-3 h-3 rounded-full bg-white transition-all shadow-sm",
+                                        showCorporateOnly ? "right-1" : "left-1"
+                                    )} />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium">Ocultar Cerrados</span>
+                                    <span className="text-[10px] text-muted-foreground italic">Solo procesos en curso</span>
+                                </div>
+                                <button
+                                    onClick={() => setHideNonActionable(!hideNonActionable)}
+                                    className={cn(
+                                        "w-10 h-5 rounded-full transition-colors relative",
+                                        hideNonActionable ? "bg-primary" : "bg-zinc-700"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "absolute top-1 w-3 h-3 rounded-full bg-white transition-all shadow-sm",
+                                        hideNonActionable ? "right-1" : "left-1"
+                                    )} />
+                                </button>
+                            </div>
+                            <div className="col-span-full flex justify-end mt-2">
                                 <button
                                     onClick={() => handleSearch(searchQuery || activeFilter)}
                                     className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
@@ -230,7 +275,7 @@ export default function MarketAnalysisPage() {
                             <span className="text-xs font-medium text-blue-300">Oportunidades</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : metrics?.count}
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : filteredProcesses.length}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Encontradas</p>
                     </div>
@@ -240,7 +285,11 @@ export default function MarketAnalysisPage() {
                             <span className="text-xs font-medium text-purple-300">Valor Promedio</span>
                         </div>
                         <p className="text-xl font-bold text-foreground truncate">
-                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency((metrics?.avg_amount ?? 0).toString())}
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency((
+                                filteredProcesses.length > 0
+                                    ? filteredProcesses.reduce((acc, p) => acc + parseFloat(p.precio_base || '0'), 0) / filteredProcesses.length
+                                    : 0
+                            ).toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">COP</p>
                     </div>
@@ -258,11 +307,13 @@ export default function MarketAnalysisPage() {
                                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                                 <p>Buscando oportunidades...</p>
                             </div>
-                        ) : processes.length > 0 ? (
-                            processes.map((proc, i) => {
+                        ) : filteredProcesses.length > 0 ? (
+                            filteredProcesses.map((proc, i) => {
                                 const matchAnalysis = (proc as any).matchAnalysis;
                                 const isMatch = matchAnalysis?.isMatch || false;
                                 const matchScore = matchAnalysis?.matchScore || 0;
+                                const isActionable = matchAnalysis?.isActionable !== false;
+                                const isCorporate = matchAnalysis?.isCorporate !== false;
 
                                 return (
                                     <motion.div
@@ -272,16 +323,27 @@ export default function MarketAnalysisPage() {
                                         transition={{ delay: i * 0.05 }}
                                         className={cn(
                                             "p-4 rounded-xl border transition-all",
-                                            isMatch
+                                            isMatch && isActionable
                                                 ? "bg-green-500/10 border-green-500/50 hover:border-green-500/70 shadow-lg shadow-green-500/10"
-                                                : "bg-white/5 border-white/10 hover:border-primary/30"
+                                                : "bg-white/5 border-white/10 hover:border-primary/30",
+                                            !isActionable && "opacity-60 grayscale-[0.5]"
                                         )}
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="px-2 py-1 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 uppercase">
-                                                    {proc.fase}
+                                                <span className={cn(
+                                                    "px-2 py-1 rounded text-[10px] font-medium border uppercase",
+                                                    isActionable
+                                                        ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                )}>
+                                                    {isActionable ? proc.fase : `FINALIZADO: ${proc.fase}`}
                                                 </span>
+                                                {!isCorporate && (
+                                                    <span className="px-2 py-1 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                        PERSONA NATURAL
+                                                    </span>
+                                                )}
                                                 {isMatch && (
                                                     <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-500/40">
                                                         <CheckCircle2 className="w-3 h-3" />
@@ -444,6 +506,6 @@ export default function MarketAnalysisPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

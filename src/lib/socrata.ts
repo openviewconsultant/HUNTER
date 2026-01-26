@@ -14,6 +14,7 @@ export interface SecopProcess {
     ciudad_entidad?: string;
     nombre_del_proveedor?: string;
     valor_total_adjudicacion?: string;
+    estado_del_proceso?: string;
 }
 
 // SECOP II Datasets

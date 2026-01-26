@@ -13,6 +13,8 @@ export interface TenderMatchAnalysis {
     reasons: string[];
     warnings: string[];
     advice?: string;
+    isCorporate: boolean;
+    isActionable: boolean;
 }
 
 /**
@@ -69,12 +71,31 @@ export async function analyzeTenderMatch(
         reasons.push(`Ubicación: Proceso en ${locationMatch.region}, una zona favorable`);
     }
 
+    // Pillar 4: Corporate vs Natural Person Filter
+    const description = (process.descripci_n_del_procedimiento || "").toLowerCase();
+    const personalServicesKeywords = ["apoyo a la gestión", "persona natural", "servicios personales", "auxiliar de", "apoyo administrativo"];
+    const isNaturalPerson = personalServicesKeywords.some(key => description.includes(key));
+
+    // Obra, Suministro and Compraventa are always corporate
+    const corporateContracts = ["Obra", "Suministro", "Compraventa", "Consultoría", "Interventoría"];
+    const isCorporateType = corporateContracts.some(type => process.tipo_de_contrato?.includes(type));
+
+    const isCorporate = isCorporateType || !isNaturalPerson;
+
+    if (!isCorporate) {
+        matchScore = Math.max(0, matchScore - 40); // Heavy penalty for personal services
+        warnings.push('Enfoque: Este contrato parece ser para una persona natural (Servicios personales)');
+    }
+
     matchScore = Math.min(100, matchScore);
-    const isMatch = matchScore >= 60; // Increased threshold for "Match"
+    const isActionable = process.fase === 'Presentación de oferta';
+    const isMatch = isCorporate && matchScore >= 60; // Increased threshold and must be corporate
 
     // Strategic AI Advice
     let advice = "";
-    if (matchScore < 60) {
+    if (!isActionable) {
+        advice = `Estrategia: Este proceso ya no recibe ofertas (Fase: ${process.fase || 'Iniciada'}). Úsalo solo para análisis de mercado o histórico.`;
+    } else if (matchScore < 60) {
         if (!unspscMatch.hasMatch) {
             advice = "Estrategia: Este proceso requiere códigos UNSPSC que no tienes registrados. Considera actualizar tu RUP o buscar un socio que ya cuente con estos códigos.";
         } else if (!capacityMatch.hasCapacity) {
@@ -99,7 +120,9 @@ export async function analyzeTenderMatch(
         matchScore,
         reasons,
         warnings,
-        advice
+        advice,
+        isCorporate,
+        isActionable
     };
 }
 

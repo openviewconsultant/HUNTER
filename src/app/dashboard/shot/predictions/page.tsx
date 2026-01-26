@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, TrendingUp, AlertTriangle, Target, Calendar, DollarSign } from "lucide-react";
 import { getPredictionStats, getOpportunities, getRisks } from "./actions";
+import { cn } from "@/lib/utils";
 
 export default async function PredictionsPage() {
     const stats = await getPredictionStats();
@@ -83,13 +84,35 @@ export default async function PredictionsPage() {
                                 </div>
                             ) : (
                                 opportunities.map((opp) => (
-                                    <div key={opp.id} className="rounded-md border p-4 hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-center justify-between">
+                                    <div key={opp.id} className={cn(
+                                        "rounded-md border p-4 transition-all hover:bg-muted/50",
+                                        opp.matchScore > 90 && opp.isActionable !== false ? "bg-green-600/5 border-green-600/20" : "",
+                                        opp.isActionable === false ? "opacity-60 grayscale-[0.3]" : ""
+                                    )}>
+                                        <div className="flex items-start justify-between">
                                             <div className="space-y-1">
-                                                <h3 className="font-semibold">{opp.title}</h3>
+                                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                    <span className={cn(
+                                                        "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border",
+                                                        opp.isActionable !== false
+                                                            ? "bg-green-600/10 text-green-400 border-green-600/20"
+                                                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                    )}>
+                                                        {opp.isActionable !== false ? "Abierto" : "Finalizado / En curso"}
+                                                    </span>
+                                                    {opp.isCorporate === false && (
+                                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                            Persona Natural
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h3 className="font-semibold line-clamp-1">{opp.title}</h3>
                                                 <p className="text-sm text-muted-foreground">{opp.entity}</p>
                                             </div>
-                                            <Badge variant={opp.matchScore > 90 ? "default" : "secondary"} className={opp.matchScore > 90 ? "bg-green-600 hover:bg-green-700" : ""}>
+                                            <Badge variant={opp.matchScore > 90 ? "default" : "secondary"} className={cn(
+                                                opp.matchScore > 90 && opp.isActionable !== false ? "bg-green-600 hover:bg-green-700" : "",
+                                                !opp.isActionable && "bg-zinc-600 hover:bg-zinc-600 opacity-50"
+                                            )}>
                                                 Match {opp.matchScore}%
                                             </Badge>
                                         </div>
