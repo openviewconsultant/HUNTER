@@ -15,95 +15,130 @@ export async function getDashboardStats() {
             successRate: 0,
             totalInProcess: 0,
             recentMissions: [],
+            recentNotifications: [],
             notifSummary: { mission: 0, alert: 0, document: 0, new_tender: 0 }
         };
     }
 
     try {
-        // Get active missions
+        // 1. Get user's profile and company
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+        if (!profile) throw new Error("Profile not found");
+
+        const { data: company } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('profile_id', profile.id)
+            .single();
+
+        if (!company) {
+            // If no company, return zeros but don't fail
+            return {
+                activeMissions: 0,
+                newAlerts: 0,
+                documents: 0,
+                upcomingDeadlines: 0,
+                successRate: 0,
+                totalInProcess: 0,
+                recentMissions: [],
+                notifSummary: { mission: 0, alert: 0, document: 0, new_tender: 0 }
+            };
+        }
+
+        // 2. Get active missions for the company
         const { data: recentMissions, count: activeMissions } = await supabase
             .from('projects')
             .select('name, deadline', { count: 'exact' })
-            .eq('user_id', user.id)
+            .eq('company_id', company.id)
             .eq('status', 'ACTIVE')
             .limit(2);
 
-        // Get unread notifications
+        // 3. Get unread notifications for the user
         const { data: notifications, error: notifError } = await supabase
             .from('notifications')
-            .select('type')
+            .select('*')
             .eq('user_id', user.id)
-            .eq('read', false);
+            .order('created_at', { ascending: false });
+
+        const recentNotifications = notifications?.slice(0, 3) || [];
+        const unreadNotifications = notifications?.filter(n => !n.read) || [];
 
         const notifSummary = {
-            mission: notifications?.filter(n => n.type === 'MISSION' || n.type === 'new_tender').length || 0,
-            alert: notifications?.filter(n => n.type === 'ALERT' || n.type === 'alert').length || 0,
-            document: notifications?.filter(n => n.type === 'DOCUMENT' || n.type === 'alert').length || 0,
-            new_tender: notifications?.filter(n => n.type === 'new_tender').length || 0,
+            mission: unreadNotifications.filter(n => n.type === 'MISSION' || n.type === 'new_tender').length || 0,
+            alert: unreadNotifications.filter(n => n.type === 'ALERT' || n.type === 'alert').length || 0,
+            document: unreadNotifications.filter(n => n.type === 'DOCUMENT').length || 0,
+            new_tender: unreadNotifications.filter(n => n.type === 'new_tender').length || 0,
         };
-        const newAlerts = notifications?.length || 0;
+        const newAlerts = unreadNotifications.length || 0;
 
-        // Get documents count from company_documents table
-        const { count: documents } = await supabase
+        // 4. Get documents count
+        const { count: documentsCount } = await supabase
             .from('company_documents')
             .select('*', { count: 'exact', head: true })
-            .eq('uploaded_by', user.id);
+            .eq('company_id', company.id);
 
-        // Get upcoming deadlines (missions with deadline in next 7 days)
+        // 5. Get upcoming deadlines
         const sevenDaysFromNow = new Date();
         sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
         const { count: upcomingDeadlines } = await supabase
             .from('projects')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
+            .eq('company_id', company.id)
             .eq('status', 'ACTIVE')
             .lte('deadline', sevenDaysFromNow.toISOString());
 
-        // Calculate success rate (won / total completed)
+        // 6. Calculate success rate
         const { data: completedProjects } = await supabase
             .from('projects')
             .select('status')
-            .eq('user_id', user.id)
+            .eq('company_id', company.id)
             .in('status', ['WON', 'LOST']);
 
         const totalCompleted = completedProjects?.length || 0;
         const won = completedProjects?.filter(p => p.status === 'WON').length || 0;
         const successRate = totalCompleted > 0 ? Math.round((won / totalCompleted) * 100) : 0;
 
-        // Total value in active projects
+        // 7. Total value in active projects
         const { data: activeProjects } = await supabase
             .from('projects')
-            .select('tender:tender_id(amount)')
-            .eq('user_id', user.id)
+            .select('id, budget, tender:tender_id(amount)')
+            .eq('company_id', company.id)
             .eq('status', 'ACTIVE');
 
         const totalInProcess = activeProjects?.reduce((sum, project) => {
-            const tender = project.tender as unknown as { amount: number } | null;
-            return sum + (tender?.amount || 0);
+            const tenderAmount = (project.tender as any)?.amount || 0;
+            return sum + (Number(project.budget) || Number(tenderAmount) || 0);
         }, 0) || 0;
 
         return {
             activeMissions: activeMissions || 0,
-            newAlerts: notifError ? 6 : (newAlerts || 0),
-            documents: documents || 0,
+            newAlerts: (newAlerts || 0),
+            documents: documentsCount || 0,
             upcomingDeadlines: upcomingDeadlines || 0,
             successRate,
             totalInProcess,
             recentMissions: recentMissions || [],
+            recentNotifications,
             notifSummary
         };
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         return {
             activeMissions: 0,
-            newAlerts: 6,
+            newAlerts: 0,
             documents: 0,
             upcomingDeadlines: 0,
             successRate: 0,
             totalInProcess: 0,
             recentMissions: [],
-            notifSummary: { mission: 3, alert: 2, document: 1, new_tender: 1 }
+            recentNotifications: [],
+            notifSummary: { mission: 0, alert: 0, document: 0, new_tender: 0 }
         };
     }
 }

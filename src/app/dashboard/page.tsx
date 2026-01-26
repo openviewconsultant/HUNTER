@@ -150,21 +150,73 @@ export default async function DashboardPage() {
                 </div>
             </div>
 
-            {/* Compact Onboarding */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="max-w-xl">
-                    <h2 className="text-lg font-bold text-foreground">Completa tu Perfil de Empresa</h2>
-                    <p className="text-zinc-400 text-xs mt-1">
-                        Sube tus documentos legales y financieros para que HUNTER pueda encontrarte las mejores oportunidades.
-                    </p>
+            {/* Dashboard Bottom Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Onboarding / Profile Status */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 flex flex-col md:flex-row md:items-center justify-between gap-4 h-fit">
+                        <div className="max-w-xl">
+                            <h2 className="text-lg font-bold text-foreground">Perfil de Empresa</h2>
+                            <p className="text-zinc-400 text-xs mt-1">
+                                {stats.documents > 0
+                                    ? "Tu perfil está siendo procesado por nuestra IA para encontrar mejores oportunidades."
+                                    : "Sube tus documentos legales y financieros para que HUNTER pueda encontrarte las mejores oportunidades."}
+                            </p>
+                        </div>
+                        <Link
+                            href="/dashboard/company"
+                            className="inline-flex items-center justify-center h-9 px-5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors shrink-0"
+                        >
+                            Ir al Perfil
+                        </Link>
+                    </div>
+
+                    {/* Quick Tips / Market Status could go here */}
                 </div>
-                <Link
-                    href="/dashboard/company"
-                    className="inline-flex items-center justify-center h-9 px-5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors shrink-0"
-                >
-                    Ir al Perfil
-                </Link>
+
+                {/* Recent Notifications / Alerts */}
+                <div className="lg:col-span-1">
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/10 h-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Actividad Reciente</h3>
+                            <Link href="/dashboard/notifications" className="text-[10px] text-primary hover:underline">Ver todas</Link>
+                        </div>
+
+                        <div className="space-y-4">
+                            {stats?.recentNotifications && stats.recentNotifications.length > 0 ? (
+                                stats.recentNotifications.map((notif: any) => (
+                                    <div key={notif.id} className="flex gap-3 items-start border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                                        <div className={cn(
+                                            "mt-1 w-2 h-2 rounded-full shrink-0",
+                                            notif.read ? "bg-zinc-600" : "bg-primary animate-pulse"
+                                        )} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-foreground truncate">{notif.title}</p>
+                                            <p className="text-[10px] text-zinc-400 line-clamp-1">{notif.message}</p>
+                                            <p className="text-[9px] text-zinc-600 mt-1">
+                                                {new Date(notif.created_at).toLocaleDateString('es-CO', {
+                                                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-2">
+                                        <BellOff className="w-5 h-5 text-zinc-600" />
+                                    </div>
+                                    <p className="text-xs text-zinc-500">No hay notificaciones recientes</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
+
+// Helper icons/utils needed for the dashboard
+import { BellOff } from "lucide-react";
+import { cn } from "@/lib/utils";
