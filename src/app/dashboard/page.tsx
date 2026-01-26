@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     };
 
     return (
-        <div className="space-y-6 max-h-screen overflow-hidden">
+        <div className="space-y-6 h-[calc(100vh-7.5rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Panel de Control</h1>

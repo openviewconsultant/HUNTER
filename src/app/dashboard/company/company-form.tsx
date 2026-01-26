@@ -316,7 +316,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
     };
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex flex-col mr-4">
+        <div className="h-[calc(100vh-7.5rem)] flex flex-col mr-4 overflow-hidden">
             {/* Fixed Header */}
             <div className="flex-shrink-0">
                 <div>
@@ -507,7 +507,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl">
+                                    <div className="text-center py-6 border border-white/10 bg-white/5 rounded-xl">
                                         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                                             <Building2 className="w-8 h-8 text-muted-foreground" />
                                         </div>
@@ -667,41 +667,41 @@ export default function CompanyForm({ company }: CompanyFormProps) {
 
                                     {/* Financial Indicators Display */}
                                     {company?.financial_indicators && (
-                                        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Índice de Liquidez</p>
-                                                <p className="text-2xl font-bold text-primary">
+                                        <div className="mb-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Liq.</p>
+                                                <p className="text-xl font-bold text-primary">
                                                     {company.financial_indicators.liquidity_index?.toFixed(2) || '-'}
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Nivel de Endeudamiento</p>
-                                                <p className="text-2xl font-bold text-primary">
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Endeud.</p>
+                                                <p className="text-xl font-bold text-primary">
                                                     {company.financial_indicators.indebtedness_index ? (company.financial_indicators.indebtedness_index * 100).toFixed(1) + '%' : '-'}
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Capacidad K</p>
-                                                <p className="text-2xl font-bold text-primary">
-                                                    {company.financial_indicators.k_contratacion || '-'} SMMLV
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Cap. K</p>
+                                                <p className="text-xl font-bold text-primary">
+                                                    {company.financial_indicators.k_contratacion || '-'}
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Activos Totales</p>
-                                                <p className="text-lg font-semibold text-foreground">
-                                                    ${new Intl.NumberFormat('es-CO').format(company.financial_indicators.total_assets || 0)}
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Activos</p>
+                                                <p className="text-sm font-semibold text-foreground truncate">
+                                                    ${(company.financial_indicators.total_assets / 1000000).toFixed(0)}M
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Pasivos Totales</p>
-                                                <p className="text-lg font-semibold text-foreground">
-                                                    ${new Intl.NumberFormat('es-CO').format(company.financial_indicators.total_liabilities || 0)}
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Pasivos</p>
+                                                <p className="text-sm font-semibold text-foreground truncate">
+                                                    ${(company.financial_indicators.total_liabilities / 1000000).toFixed(0)}M
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                                <p className="text-xs text-muted-foreground mb-1">Patrimonio</p>
-                                                <p className="text-lg font-semibold text-foreground">
-                                                    ${new Intl.NumberFormat('es-CO').format(company.financial_indicators.total_equity || 0)}
+                                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground mb-1">Patrim.</p>
+                                                <p className="text-sm font-semibold text-foreground truncate">
+                                                    ${(company.financial_indicators.total_equity / 1000000).toFixed(0)}M
                                                 </p>
                                             </div>
                                         </div>
@@ -2100,7 +2100,7 @@ export default function CompanyForm({ company }: CompanyFormProps) {
                                     <div className="space-y-4">
                                         <h4 className="text-lg font-semibold text-foreground mb-4">Historial de Contratos</h4>
                                         {contracts.length === 0 ? (
-                                            <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl">
+                                            <div className="text-center py-6 border border-white/10 bg-white/5 rounded-xl">
                                                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                                                     <FileText className="w-8 h-8 text-muted-foreground" />
                                                 </div>
