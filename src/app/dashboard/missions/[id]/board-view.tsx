@@ -21,10 +21,13 @@ import {
 } from '@dnd-kit/sortable';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckCircle2 } from "lucide-react";
-import { updateTaskStage } from "../actions";
+import { Plus, CheckCircle2, RefreshCcw, Calendar } from "lucide-react";
+import { updateTaskStage, syncProjectWithSecop } from "../actions";
 import { useSortable } from '@dnd-kit/sortable';
+import { useTransition } from 'react';
+import { useParams } from 'next/navigation';
 import { CSS } from '@dnd-kit/utilities';
+import { cn } from "@/lib/utils";
 
 // Task Card Component
 function TaskCard({ task, isOverlay = false }: { task: any, isOverlay?: boolean }) {
@@ -75,15 +78,21 @@ function TaskCard({ task, isOverlay = false }: { task: any, isOverlay?: boolean 
                     {task.description}
                 </p>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
                 <Badge
                     variant="outline"
                     className="text-[10px]"
                 >
                     {task.requirement_type}
                 </Badge>
+                {task.due_date && (
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <Calendar className="w-2.5 h-2.5" />
+                        {new Date(task.due_date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                    </div>
+                )}
                 {task.requirement_met && (
-                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
                 )}
             </div>
         </div>
@@ -219,27 +228,58 @@ export default function BoardView({ initialStages }: { initialStages: any[] }) {
         }
     }
 
+    const params = useParams();
+    const [isPending, startTransition] = useTransition();
+
+    const handleSync = () => {
+        if (!params.id) return;
+        startTransition(async () => {
+            try {
+                await syncProjectWithSecop(params.id as string);
+                // The page will revalidate automatically due to revalidatePath
+            } catch (error) {
+                console.error("Sync failed:", error);
+                alert("Error al sincronizar con SECOP: " + (error as Error).message);
+            }
+        });
+    };
+
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="grid grid-cols-4 gap-4 h-full overflow-x-auto pb-4">
-                {stages.map((stage) => (
-                    <BoardColumn
-                        key={stage.id}
-                        stage={stage}
-                        tasks={stage.tasks || []}
-                    />
-                ))}
+        <div className="space-y-4 h-full">
+            <div className="flex justify-end">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={isPending}
+                    className="gap-2"
+                >
+                    <RefreshCcw className={cn("w-4 h-4", isPending && "animate-spin")} />
+                    {isPending ? "Sincronizando..." : "Sincronizar con SECOP"}
+                </Button>
             </div>
 
-            <DragOverlay>
-                {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-            </DragOverlay>
-        </DndContext>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="grid grid-cols-4 gap-4 h-[calc(100%-40px)] overflow-x-auto pb-4">
+                    {stages.map((stage) => (
+                        <BoardColumn
+                            key={stage.id}
+                            stage={stage}
+                            tasks={stage.tasks || []}
+                        />
+                    ))}
+                </div>
+
+                <DragOverlay>
+                    {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+                </DragOverlay>
+            </DndContext>
+        </div>
     );
 }

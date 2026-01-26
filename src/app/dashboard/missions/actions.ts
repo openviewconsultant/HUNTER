@@ -2,6 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getProcessSchedule, getProcessDocuments } from "@/lib/socrata";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { revalidatePath } from "next/cache";
 
 export async function getProjects() {
     const supabase = await createClient();
@@ -191,7 +194,18 @@ export async function createProject(formData: FormData) {
 
     // Create default stages and deliverables
     const stages = await createDefaultStages(data.id, methodology, supabase);
-    await createDefaultDeliverables(data.id, stages, supabase);
+
+    // Attempt to sync with SECOP if tenderId is present
+    if (validTenderId) {
+        try {
+            await syncProjectWithSecop(data.id);
+        } catch (e) {
+            console.error("Initial SECOP sync failed, falling back to defaults:", e);
+            await createDefaultDeliverables(data.id, stages, supabase);
+        }
+    } else {
+        await createDefaultDeliverables(data.id, stages, supabase);
+    }
 
     redirect(`/dashboard/missions/${data.id}`);
 }
@@ -247,5 +261,106 @@ export async function updateTaskStage(taskId: string, stageId: string) {
 
     if (error) throw new Error(error.message);
 
+    return { success: true };
+}
+
+export async function syncProjectWithSecop(projectId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    // 1. Get Project and Tender info
+    const { data: project, error: pError } = await supabase
+        .from('projects')
+        .select(`
+            *,
+            tender:tender_id (secop_id, title, description)
+        `)
+        .eq('id', projectId)
+        .single();
+
+    if (pError || !project) throw new Error("Project not found");
+    const secopId = project.tender?.secop_id;
+    if (!secopId) throw new Error("This project is not linked to SECOP");
+
+    // 2. Fetch data from SECOP
+    const [schedule, documents] = await Promise.all([
+        getProcessSchedule(secopId),
+        getProcessDocuments(secopId)
+    ]);
+
+    if (schedule.length === 0 && documents.length === 0) {
+        throw new Error("No real data found in SECOP for this process.");
+    }
+
+    // 3. fetch current stages
+    const { data: stages } = await supabase
+        .from('project_stages')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('order');
+
+    if (!stages || stages.length === 0) throw new Error("Project stages not found");
+
+    // 4. Use AI to categorize and map data
+    const apiKey = process.env.GEMINI_API_KEY;
+    const genAI = new GoogleGenerativeAI(apiKey!);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+
+    const prompt = `
+    Como experto en contratación pública en Colombia, analiza la siguiente información de SECOP II para una licitación.
+    Tu tarea es generar una lista de TAREAS y ENTREGABLES organizada por ETAPAS.
+    
+    INFORMACIÓN DE SECOP:
+    - Cronograma (Hitos): ${JSON.stringify(schedule)}
+    - Documentos registrados: ${JSON.stringify(documents)}
+    
+    ETAPAS DISPONIBLES (Project Stages):
+    ${stages.map(s => `- ID: ${s.id}, Nombre: ${s.name}`).join('\n')}
+    
+    REGLAS:
+    1. Identifica qué documentos son de la etapa de "Iniciación" (como RUT, RUP, Documento Identidad).
+    2. Identifica hitos del cronograma y conviértelos en tareas (ej. "Presentación de Oferta", "Audiencia de Adjudicación").
+    3. Para los hitos del cronograma, usa la fecha proporcionada.
+    4. Categoriza cada tarea en uno de los IDs de etapa proporcionados arriba.
+    
+    RESPONDE EXCLUSIVAMENTE CON UN JSON ARRAY:
+    [
+      {
+        "stage_id": "ID_DE_LA_ETAPA",
+        "title": "Nombre de la tarea/entregable",
+        "description": "Breve descripción",
+        "priority": "HIGH" | "MEDIUM" | "CRITICAL",
+        "due_date": "YYYY-MM-DD",
+        "requirement_type": "legal" | "technical" | "financial"
+      }
+    ]
+    `;
+
+    const result = await model.generateContent(prompt);
+    const aiResponse = result.response.text();
+    const jsonStr = aiResponse.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
+    const newTasks = JSON.parse(jsonStr);
+
+    // 5. Clean old auto-generated requirements (optional, but requested by 'real data' context)
+    await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('is_requirement', true);
+
+    // 6. Insert new tasks
+    const tasksToInsert = newTasks.map((t: any) => ({
+        ...t,
+        project_id: projectId,
+        status: 'TODO',
+        is_requirement: true,
+        requirement_met: false
+    }));
+
+    const { error: iError } = await supabase.from('project_tasks').insert(tasksToInsert);
+    if (iError) throw iError;
+
+    revalidatePath(`/dashboard/missions/${projectId}`);
     return { success: true };
 }

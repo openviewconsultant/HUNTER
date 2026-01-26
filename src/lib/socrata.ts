@@ -16,9 +16,11 @@ export interface SecopProcess {
     valor_total_adjudicacion?: string;
 }
 
-// Using "SECOP II - Procesos de Contratación" dataset
-const SOCRATA_API_URL = "https://www.datos.gov.co/resource/p6dx-8zbt.json";
-const APP_TOKEN = process.env.SOCRATA_APP_TOKEN; // Optional but recommended
+// SECOP II Datasets
+const SOCRATA_PROCESS_URL = "https://www.datos.gov.co/resource/p6dx-8zbt.json";
+const SOCRATA_SCHEDULE_URL = "https://www.datos.gov.co/resource/72su-7u8m.json"; // Cronograma
+const SOCRATA_DOCUMENTS_URL = "https://www.datos.gov.co/resource/f789-76kh.json"; // Documentos
+const APP_TOKEN = process.env.SOCRATA_APP_TOKEN;
 
 export interface MarketFilters {
     minAmount?: number;
@@ -56,7 +58,7 @@ export async function searchSecopProcesses(query: string, limit: number = 20, fi
             whereClause += ` AND precio_base <= ${filters.maxAmount}`;
         }
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$limit", limit.toString());
         url.searchParams.append("$q", query);
         url.searchParams.append("$where", whereClause);
@@ -133,7 +135,7 @@ export async function getMarketMetrics(query: string, filters?: MarketFilters) {
             whereClause += ` AND precio_base <= ${filters.maxAmount}`;
         }
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$select", "count(*) as count, avg(precio_base) as avg_amount");
         url.searchParams.append("$q", query);
         url.searchParams.append("$where", whereClause);
@@ -158,7 +160,7 @@ export async function searchProcessesByEntity(entityName: string, limit: number 
         // Search for active processes from specific entity
         const whereClause = `fase = 'Presentación de oferta' AND entidad LIKE '%${entityName}%'`;
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$limit", limit.toString());
         url.searchParams.append("$where", whereClause);
         url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
@@ -198,7 +200,7 @@ export async function getCompetitorsByUNSPSC(unspscCodes: string[], limit: numbe
 
         const whereClause = `fase IN ('Adjudicado', 'Celebrado')`;
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$limit", limit.toString());
         url.searchParams.append("$q", searchQuery);
         url.searchParams.append("$where", whereClause);
@@ -244,7 +246,7 @@ export async function getRecentProcessesByUNSPSC(unspscCodes: string[], daysBack
 
         const whereClause = `fase = 'Presentación de oferta' AND fecha_de_publicacion_del >= '${dateStr}'`;
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$limit", limit.toString());
         url.searchParams.append("$q", searchQuery);
         url.searchParams.append("$where", whereClause);
@@ -293,7 +295,7 @@ export async function searchOpportunitiesByUNSPSC(unspscCodes: string[], limit: 
         // Apply same filters as searchSecopProcesses
         const whereClause = `fase = 'Presentación de oferta' AND ${codesWhere} AND fecha_de_publicacion_del >= '${dateThreshold}' AND precio_base > 0`;
 
-        const url = new URL(SOCRATA_API_URL);
+        const url = new URL(SOCRATA_PROCESS_URL);
         url.searchParams.append("$limit", limit.toString());
         url.searchParams.append("$where", whereClause);
         url.searchParams.append("$order", "fecha_de_publicacion_del DESC");
@@ -318,6 +320,60 @@ export async function searchOpportunitiesByUNSPSC(unspscCodes: string[], limit: 
 
     } catch (error) {
         console.error("Error fetching opportunities by UNSPSC:", error);
+        return [];
+    }
+}
+
+export interface SecopMilestone {
+    id_del_proceso: string;
+    referencia_del_procedimiento: string;
+    nombre_etapa: string;
+    fecha: string;
+    estado_de_la_etapa: string;
+}
+
+export interface SecopDocument {
+    id_del_proceso: string;
+    nombre_del_documento: string;
+    link_del_documento?: { url: string } | string;
+    tipo_de_documento: string;
+    fecha_de_cargue: string;
+}
+
+export async function getProcessSchedule(secopId: string): Promise<SecopMilestone[]> {
+    try {
+        const url = new URL(SOCRATA_SCHEDULE_URL);
+        url.searchParams.append("$where", `id_del_proceso = '${secopId}'`);
+        url.searchParams.append("$order", "fecha ASC");
+
+        const headers: HeadersInit = { "Accept": "application/json" };
+        if (APP_TOKEN) headers["X-App-Token"] = APP_TOKEN;
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 3600 } });
+        if (!response.ok) return [];
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching process schedule:", error);
+        return [];
+    }
+}
+
+export async function getProcessDocuments(secopId: string): Promise<SecopDocument[]> {
+    try {
+        const url = new URL(SOCRATA_DOCUMENTS_URL);
+        url.searchParams.append("$where", `id_del_proceso = '${secopId}'`);
+        url.searchParams.append("$order", "fecha_de_cargue DESC");
+
+        const headers: HeadersInit = { "Accept": "application/json" };
+        if (APP_TOKEN) headers["X-App-Token"] = APP_TOKEN;
+
+        const response = await fetch(url.toString(), { headers, next: { revalidate: 3600 } });
+        if (!response.ok) return [];
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching process documents:", error);
         return [];
     }
 }
