@@ -48,8 +48,8 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
             className={cn(
                 "p-5 rounded-2xl border transition-all duration-300 group",
                 isMatch && isActionable
-                    ? "bg-gradient-to-br from-green-500/10 via-transparent to-transparent border-green-500/30 hover:border-green-500/50 shadow-lg shadow-green-500/5"
-                    : "bg-white/[0.02] border-white/10 hover:border-primary/40 hover:bg-white/[0.04]",
+                    ? "bg-gradient-to-br from-green-500/[0.05] dark:from-green-500/10 via-transparent to-transparent border-green-500/30 dark:border-green-500/30 hover:border-green-500/50 shadow-lg shadow-green-500/5"
+                    : "bg-white dark:bg-white/[0.02] border-zinc-200 dark:border-white/10 hover:border-primary/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04] shadow-sm",
                 !isActionable && "opacity-60 grayscale-[0.3]"
             )}
         >
@@ -58,8 +58,8 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                     <span className={cn(
                         "px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider",
                         isActionable
-                            ? "bg-green-500/10 text-green-400 border-green-500/20"
-                            : "bg-red-500/10 text-red-400 border-red-500/20 shadow-glow-red"
+                            ? "bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20"
+                            : "bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20 shadow-glow-red"
                     )}>
                         {isActionable ? proc.fase : (matchAnalysis?.advice?.includes('ADJUDICADO') || proc.fase?.includes('Adjudicado') || proc.estado_del_proceso?.includes('Adjudicado') ? 'ADJUDICADO' : 'CERRADO')}
                     </span>
@@ -69,32 +69,32 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                         </span>
                     )}
                     {isMatch && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/20 text-green-300 border border-green-500/40 tracking-wider">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-300 border border-green-500/20 dark:border-green-500/40 tracking-wider">
                             <CheckCircle2 className="w-3 h-3" />
                             <span>{matchScore}% MATCH</span>
                         </div>
                     )}
                 </div>
                 <div className="text-right">
-                    <div className="flex items-center justify-end gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">
+                    <div className="flex items-center justify-end gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-500 uppercase font-black tracking-tighter">
                         <Calendar className="w-3 h-3 text-primary/70" />
                         <span>Publicado</span>
                     </div>
-                    <span className="text-xs text-zinc-300 font-semibold mt-0.5 block">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-300 font-bold mt-0.5 block">
                         {new Date(proc.fecha_de_publicacion_del).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                 </div>
             </div>
 
-            <h4 className="text-base font-semibold text-foreground mb-1.5 line-clamp-2 leading-snug group-hover:text-primary/90 transition-colors">
+            <h4 className="text-base font-bold text-zinc-900 dark:text-foreground mb-1.5 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                 {proc.descripci_n_del_procedimiento}
             </h4>
 
-            <div className="flex items-center gap-2 text-xs text-zinc-500 mb-5">
-                <div className="p-1 rounded bg-white/5">
+            <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-500 mb-5">
+                <div className="p-1 rounded bg-zinc-100 dark:bg-white/5">
                     <Building2 className="w-3 h-3 text-primary" />
                 </div>
-                <span className="truncate font-medium uppercase tracking-tight">{proc.entidad}</span>
+                <span className="truncate font-bold uppercase tracking-tight">{proc.entidad}</span>
             </div>
 
             {/* Expander Trigger */}
@@ -103,8 +103,8 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                 className={cn(
                     "w-full flex items-center justify-between mb-4 px-4 py-2.5 rounded-xl transition-all text-xs font-semibold border",
                     isExpanded
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:border-white/10"
+                        ? "bg-zinc-100 dark:bg-white/10 border-zinc-300 dark:border-white/20 text-zinc-900 dark:text-white"
+                        : "bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/10 hover:border-zinc-300 dark:hover:border-white/10"
                 )}
             >
                 <div className="flex items-center gap-2.5">
@@ -129,20 +129,20 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                         className="overflow-hidden"
                     >
                         {/* Informacion Detallada del Proceso */}
-                        <div className="grid grid-cols-2 gap-4 mb-4 p-4 rounded-xl bg-black/40 border border-white/5 shadow-inner">
+                        <div className="grid grid-cols-2 gap-4 mb-4 p-4 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200 dark:border-white/5 shadow-inner">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-black tracking-widest">
                                     <Info className="w-2.5 h-2.5" />
                                     <span>Fase</span>
                                 </div>
-                                <p className="text-xs text-zinc-200 font-bold">{proc.fase || 'N/A'}</p>
+                                <p className="text-xs text-zinc-900 dark:text-zinc-200 font-bold">{proc.fase || 'N/A'}</p>
                             </div>
                             <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-black tracking-widest">
                                     <ShieldCheck className="w-2.5 h-2.5" />
                                     <span>Estado</span>
                                 </div>
-                                <p className="text-xs text-zinc-200 font-bold truncate" title={proc.estado_resumen || proc.estado_del_procedimiento}>
+                                <p className="text-xs text-zinc-900 dark:text-zinc-200 font-bold truncate" title={proc.estado_resumen || proc.estado_del_procedimiento}>
                                     {proc.estado_resumen || proc.estado_del_procedimiento || 'N/A'}
                                 </p>
                             </div>
@@ -151,14 +151,14 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                                     <FileText className="w-2.5 h-2.5" />
                                     <span>Tipo Contrato</span>
                                 </div>
-                                <p className="text-xs text-zinc-200 font-bold truncate">{proc.tipo_de_contrato || 'N/A'}</p>
+                                <p className="text-xs text-zinc-900 dark:text-zinc-200 font-bold truncate">{proc.tipo_de_contrato || 'N/A'}</p>
                             </div>
                             <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-black tracking-widest">
                                     <Timer className="w-2.5 h-2.5" />
                                     <span>Duración</span>
                                 </div>
-                                <p className="text-xs text-zinc-200 font-bold">
+                                <p className="text-xs text-zinc-900 dark:text-zinc-200 font-bold">
                                     {proc.duracion ? `${proc.duracion} ${proc.unidad_de_duracion || ''}` : 'N/A'}
                                 </p>
                             </div>
@@ -167,7 +167,7 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                                     <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-black tracking-widest">
                                         <span>Justificación</span>
                                     </div>
-                                    <p className="text-[11px] text-zinc-400 leading-relaxed italic line-clamp-3">
+                                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed italic line-clamp-3">
                                         {proc.justificaci_n_modalidad_de}
                                     </p>
                                 </div>
@@ -183,7 +183,7 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                                 </div>
                                 <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-primary/[0.03] border border-primary/10 shadow-inner">
                                     {getSuggestedDeliverables(proc).slice(0, 6).map((del, idx) => (
-                                        <span key={idx} className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-tight hover:bg-primary/20 transition-all cursor-default">
+                                        <span key={idx} className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-tight hover:bg-primary/20 transition-all cursor-default dark:bg-primary/10 dark:text-primary dark:border-primary/20">
                                             {del}
                                         </span>
                                     ))}
@@ -204,14 +204,14 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                 <div className="space-y-3 mt-4">
                     {/* Reasons for Match */}
                     {matchAnalysis.reasons.length > 0 && (
-                        <div className="p-4 rounded-xl bg-green-500/[0.03] border border-green-500/20">
-                            <p className="text-xs font-bold text-green-400 mb-2 uppercase tracking-widest flex items-center gap-2">
+                        <div className="p-4 rounded-xl bg-green-500/[0.05] dark:bg-green-500/[0.03] border border-green-500/20 shadow-sm">
+                            <p className="text-xs font-bold text-green-700 dark:text-green-400 mb-2 uppercase tracking-widest flex items-center gap-2">
                                 <Target className="w-3.5 h-3.5" />
                                 Análisis de Compatibilidad
                             </p>
                             <ul className="space-y-1.5">
                                 {matchAnalysis.reasons.slice(0, 3).map((reason: string, idx: number) => (
-                                    <li key={idx} className="text-[11px] text-zinc-300 flex items-start gap-2 leading-snug">
+                                    <li key={idx} className="text-[11px] text-zinc-700 dark:text-zinc-300 flex items-start gap-2 leading-snug">
                                         <div className="w-1 h-1 rounded-full bg-green-500 mt-1.5 shrink-0" />
                                         <span>{reason}</span>
                                     </li>
@@ -222,13 +222,13 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
 
                     {/* Strategic Advice */}
                     {matchAnalysis.advice && (
-                        <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/20 flex items-start gap-3 shadow-sm group/advice">
-                            <div className="shrink-0 p-2 rounded-lg bg-indigo-500/10 group-hover/advice:bg-indigo-500/20 transition-colors">
-                                <Bot className="w-4 h-4 text-indigo-400" />
+                        <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 flex items-start gap-3 shadow-sm group/advice">
+                            <div className="shrink-0 p-2 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 group-hover/advice:bg-indigo-200 dark:group-hover/advice:bg-indigo-500/20 transition-colors">
+                                <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                             </div>
                             <div className="space-y-0.5">
-                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Insight de IA</p>
-                                <p className="text-xs text-indigo-100/80 font-medium leading-relaxed italic">
+                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Insight de IA</p>
+                                <p className="text-xs text-indigo-900 dark:text-indigo-100/80 font-bold leading-relaxed italic">
                                     "{matchAnalysis.advice}"
                                 </p>
                             </div>
@@ -240,12 +240,12 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
             <div className="flex items-center justify-between pt-5 mt-4 border-t border-white/5">
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-2">
-                        <div className="p-1 rounded bg-white/5">
+                        <div className="p-1 rounded bg-zinc-100 dark:bg-white/5">
                             <DollarSign className="w-3.5 h-3.5 text-primary" />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Presupuesto</span>
-                            <span className="text-sm text-foreground font-bold">{formatCurrency(proc.precio_base)}</span>
+                            <span className="text-sm text-zinc-900 dark:text-foreground font-black tracking-tight">{formatCurrency(proc.precio_base)}</span>
                         </div>
                     </div>
                 </div>
@@ -269,7 +269,7 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                             href={typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2.5 rounded-xl bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10 hover:text-white transition-all"
+                            className="p-2.5 rounded-xl bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm"
                             title="Ver proceso original"
                         >
                             <ExternalLink className="w-4 h-4" />
@@ -471,8 +471,8 @@ export default function MarketAnalysisPage() {
                 </Link>
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Análisis de Mercado</h1>
-                        <p className="text-zinc-400 text-sm">
+                        <h1 className="text-2xl font-black text-zinc-900 dark:text-foreground tracking-tight">Análisis de Mercado</h1>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">
                             Datos en tiempo real de SECOP II (Colombia Compra Eficiente)
                         </p>
                     </div>
@@ -483,14 +483,14 @@ export default function MarketAnalysisPage() {
             <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
 
                 {/* Search & Filters Section */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sticky top-0 backdrop-blur-xl z-20 shadow-2xl">
+                <div className="bg-white/80 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-2xl p-5 sticky top-0 backdrop-blur-xl z-20 shadow-xl dark:shadow-2xl">
                     <form onSubmit={onSearch} className="flex gap-3">
                         <div className="relative flex-1 group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-primary transition-colors" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-primary transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Buscar lictaciones por entidad, objeto o código UNSPSC..."
-                                className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-4 text-sm text-foreground placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 focus:bg-black/60 transition-all shadow-inner"
+                                className="w-full bg-zinc-100/50 dark:bg-black/40 border border-zinc-200 dark:border-white/10 rounded-xl pl-12 pr-4 py-4 text-sm text-zinc-900 dark:text-foreground placeholder:text-zinc-500 dark:placeholder:text-zinc-600 focus:outline-none focus:border-primary focus:bg-white dark:focus:bg-black/60 transition-all shadow-inner"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -502,7 +502,7 @@ export default function MarketAnalysisPage() {
                                 "px-5 py-4 rounded-xl border transition-all flex items-center gap-3 font-bold text-sm",
                                 showFilters
                                     ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
+                                    : "bg-white dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white"
                             )}
                         >
                             <Filter className="w-4 h-4" />
@@ -518,8 +518,8 @@ export default function MarketAnalysisPage() {
                                 className={cn(
                                     "px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all border",
                                     activeFilter === filter.id
-                                        ? "bg-primary/20 text-primary border-primary/30 shadow-sm"
-                                        : "bg-white/5 text-zinc-500 border-transparent hover:bg-white/10 hover:text-zinc-300"
+                                        ? "bg-primary/10 dark:bg-primary/20 text-primary border-primary/30 shadow-sm"
+                                        : "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-500 border-transparent hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-700 dark:hover:text-zinc-300"
                                 )}
                             >
                                 {filter.label}
@@ -545,7 +545,7 @@ export default function MarketAnalysisPage() {
                                                 placeholder="Cualquier valor"
                                                 value={maxAmount}
                                                 onChange={(e) => setMaxAmount(e.target.value)}
-                                                className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                                                className="w-full bg-zinc-100 dark:bg-black/40 border border-zinc-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-zinc-900 dark:text-foreground focus:outline-none focus:border-primary transition-all font-bold"
                                             />
                                         </div>
                                     </div>
@@ -556,7 +556,7 @@ export default function MarketAnalysisPage() {
                                             <select
                                                 value={selectedPhase}
                                                 onChange={(e) => setSelectedPhase(e.target.value)}
-                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium appearance-none"
+                                                className="w-full bg-zinc-100 dark:bg-black/40 border border-zinc-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-foreground focus:outline-none focus:border-primary transition-all font-bold appearance-none"
                                             >
                                                 <option value="">Todas las fases</option>
                                                 <option value="Presentación de oferta">Presentación de oferta</option>
@@ -575,7 +575,7 @@ export default function MarketAnalysisPage() {
                                             <select
                                                 value={selectedStatus}
                                                 onChange={(e) => setSelectedStatus(e.target.value)}
-                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium appearance-none"
+                                                className="w-full bg-zinc-100 dark:bg-black/40 border border-zinc-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-foreground focus:outline-none focus:border-primary transition-all font-bold appearance-none"
                                             >
                                                 <option value="">Todos los estados</option>
                                                 <option value="Adjudicado">Adjudicado</option>
@@ -593,14 +593,14 @@ export default function MarketAnalysisPage() {
                                             className={cn(
                                                 "flex items-center justify-between p-4 rounded-xl border-2 transition-all group",
                                                 showCorporateOnly
-                                                    ? "bg-primary/10 border-primary/40 text-primary shadow-inner"
-                                                    : "bg-white/5 border-white/5 text-zinc-500 hover:border-white/10"
+                                                    ? "bg-primary/5 dark:bg-primary/10 border-primary/40 text-primary shadow-inner"
+                                                    : "bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-500 hover:border-zinc-300 dark:hover:border-white/10"
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
                                                     "p-2 rounded-lg transition-colors",
-                                                    showCorporateOnly ? "bg-primary/20 shadow-glow-primary" : "bg-white/5"
+                                                    showCorporateOnly ? "bg-primary/10 dark:bg-primary/20 shadow-glow-primary" : "bg-zinc-100 dark:bg-white/5"
                                                 )}>
                                                     <Building2 className="w-4 h-4" />
                                                 </div>
@@ -611,7 +611,7 @@ export default function MarketAnalysisPage() {
                                             </div>
                                             <div className={cn(
                                                 "w-10 h-6 rounded-full p-1 transition-all duration-300",
-                                                showCorporateOnly ? "bg-primary" : "bg-zinc-700"
+                                                showCorporateOnly ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
                                             )}>
                                                 <div className={cn(
                                                     "w-4 h-4 rounded-full bg-white shadow-sm transition-all",
@@ -625,14 +625,14 @@ export default function MarketAnalysisPage() {
                                             className={cn(
                                                 "flex items-center justify-between p-4 rounded-xl border-2 transition-all group",
                                                 hideNonActionable
-                                                    ? "bg-primary/10 border-primary/40 text-primary shadow-inner"
-                                                    : "bg-white/5 border-white/5 text-zinc-500 hover:border-white/10"
+                                                    ? "bg-primary/5 dark:bg-primary/10 border-primary/40 text-primary shadow-inner"
+                                                    : "bg-zinc-50 dark:bg-white/5 border-zinc-200 dark:border-white/5 text-zinc-500 hover:border-zinc-300 dark:hover:border-white/10"
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
                                                     "p-2 rounded-lg transition-colors",
-                                                    hideNonActionable ? "bg-primary/20 shadow-glow-primary" : "bg-white/5"
+                                                    hideNonActionable ? "bg-primary/10 dark:bg-primary/20 shadow-glow-primary" : "bg-zinc-100 dark:bg-white/5"
                                                 )}>
                                                     <Clock className="w-4 h-4" />
                                                 </div>
@@ -643,7 +643,7 @@ export default function MarketAnalysisPage() {
                                             </div>
                                             <div className={cn(
                                                 "w-10 h-6 rounded-full p-1 transition-all duration-300",
-                                                hideNonActionable ? "bg-primary" : "bg-zinc-700"
+                                                hideNonActionable ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
                                             )}>
                                                 <div className={cn(
                                                     "w-4 h-4 rounded-full bg-white shadow-sm transition-all",
@@ -661,7 +661,7 @@ export default function MarketAnalysisPage() {
                                                 setSelectedPhase("");
                                                 setSelectedStatus("");
                                             }}
-                                            className="px-6 py-3 text-zinc-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
+                                            className="px-6 py-3 text-zinc-500 text-xs font-bold uppercase tracking-widest hover:text-zinc-900 dark:hover:text-white transition-colors"
                                         >
                                             Limpiar
                                         </button>
@@ -683,29 +683,29 @@ export default function MarketAnalysisPage() {
 
                 {/* KPI Cards */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20">
+                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className="w-4 h-4 text-blue-400" />
-                            <span className="text-xs font-medium text-blue-300">Oportunidades</span>
+                            <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            <span className="text-xs font-black text-blue-700 dark:text-blue-300 uppercase tracking-widest">Oportunidades</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">
+                        <p className="text-2xl font-black text-zinc-900 dark:text-foreground">
                             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : filteredProcesses.length}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">Encontradas</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-muted-foreground mt-1 font-bold uppercase tracking-tight">Encontradas</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
+                    <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                            <DollarSign className="w-4 h-4 text-purple-400" />
-                            <span className="text-xs font-medium text-purple-300">Valor Promedio</span>
+                            <DollarSign className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <span className="text-xs font-black text-purple-700 dark:text-purple-300 uppercase tracking-widest">Valor Promedio</span>
                         </div>
-                        <p className="text-xl font-bold text-foreground truncate">
+                        <p className="text-xl font-black text-zinc-900 dark:text-foreground truncate uppercase tracking-tighter">
                             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(
                                 filteredProcesses.length > 0
                                     ? filteredProcesses.reduce((acc, p) => acc + parseFloat(p.precio_base || '0'), 0) / filteredProcesses.length
                                     : 0
                             )}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">COP</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-muted-foreground mt-1 font-bold uppercase tracking-tight">COP</p>
                     </div>
                 </div>
 
@@ -726,20 +726,19 @@ export default function MarketAnalysisPage() {
                                 <ProcessCard key={`${proc.id_del_proceso}-${i}`} proc={proc as any} index={i} />
                             ))
                         ) : (
-                            <div className="text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
-                                <p className="text-muted-foreground">No se encontraron procesos para estos criterios.</p>
+                            <div className="text-center py-12 bg-zinc-50 dark:bg-white/5 rounded-2xl border border-dashed border-zinc-200 dark:border-white/10">
+                                <p className="text-zinc-500 dark:text-muted-foreground font-medium">No se encontraron procesos para estos criterios.</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* BI Insights Placeholder */}
-                <div className="p-5 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10">
+                <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-gradient-to-br dark:from-primary/5 dark:to-transparent border border-zinc-200 dark:border-primary/10 shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                         <Users className="w-4 h-4 text-primary" />
-                        <h3 className="text-sm font-semibold text-foreground">Análisis de Competencia</h3>
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-foreground uppercase tracking-widest">Análisis de Competencia</h3>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                    <p className="text-[11px] text-zinc-600 dark:text-muted-foreground leading-relaxed mb-4 font-medium uppercase tracking-tight">
                         Basado en tu perfil, hemos identificado competidores frecuentes en licitaciones similares.
                     </p>
                     <div className="h-24 flex items-end justify-between gap-2 px-2">
