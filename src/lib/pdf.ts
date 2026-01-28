@@ -1,6 +1,14 @@
+// Utility to ensure DOMMatrix is polyfilled before loading pdf-parse
+function getPdfParser() {
+    if (typeof DOMMatrix === 'undefined') {
+        (global as any).DOMMatrix = class DOMMatrix { };
+    }
+    return require('pdf-parse');
+}
+
 export async function extractTextFromPdfUrl(url: string): Promise<string> {
     try {
-        const pdf = require('pdf-parse');
+        const pdf = getPdfParser();
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch PDF: ${response.statusText}`);

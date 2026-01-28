@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 
-// Polyfill DOMMatrix for pdf-parse dependency
-if (typeof DOMMatrix === 'undefined') {
-    (global as any).DOMMatrix = class DOMMatrix { };
+// Utility to ensure DOMMatrix is polyfilled before loading pdf-parse
+function getPdfParser() {
+    if (typeof DOMMatrix === 'undefined') {
+        (global as any).DOMMatrix = class DOMMatrix { };
+    }
+    return require('pdf-parse');
 }
-const pdf = require('pdf-parse');
 
 export interface AnalysisResult {
     summary: string;
@@ -139,6 +141,7 @@ export async function generateDocumentSummary(fileBase64: string | null, mimeTyp
         if (mimeType === "application/pdf" && processingBase64) {
             try {
                 const buffer = Buffer.from(processingBase64, 'base64');
+                const pdf = getPdfParser();
                 const data = await pdf(buffer);
                 const textContent = data.text || "";
 
@@ -234,6 +237,7 @@ export async function extractTextFromDocument(bucket: string, storagePath: strin
         if (mimeType === 'application/pdf') {
             const arrayBuffer = await data.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
+            const pdf = getPdfParser();
             const pdfData = await pdf(buffer);
             return pdfData.text || "";
         } else {
