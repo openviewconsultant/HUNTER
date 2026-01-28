@@ -1,17 +1,308 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2, ExternalLink, Target, CheckCircle2, Bot, Calendar, Clock, Info, ShieldCheck, Timer, GanttChartSquare } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Filter, TrendingUp, DollarSign, Users, ArrowLeft, Building2, FileText, Loader2, ExternalLink, Target, CheckCircle2, Bot, Calendar, Clock, Info, ShieldCheck, Timer, GanttChartSquare, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { searchMarketOpportunities, getMarketInsights, getUserCompanyForFilter, searchOpportunitiesByCompany } from "./actions";
 import { SecopProcess } from "@/lib/socrata";
 import { evaluateProcessRequirements, addProcessToMissions } from "./process-actions";
 import { CompetitorHistoryModal } from "./competitor-history-modal";
 import { extractUNSPSCFromProcess, getSuggestedDeliverables } from "./match-helpers";
+import { toast } from "sonner";
 
+function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: any }, index: number }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [addingToMissions, setAddingToMissions] = useState<string | null>(null);
+    const router = useRouter();
+
+    const matchAnalysis = proc.matchAnalysis;
+    const isMatch = matchAnalysis?.isMatch || false;
+    const matchScore = matchAnalysis?.matchScore || 0;
+    const isActionable = matchAnalysis?.isActionable !== false;
+    const isCorporate = matchAnalysis?.isCorporate !== false;
+
+    const handleAddToMissions = async (p: SecopProcess) => {
+        setAddingToMissions(p.id_del_proceso);
+        try {
+            const result = await addProcessToMissions(p);
+            if (result.success) {
+                toast.success('Proceso agregado a tus misiones');
+            } else {
+                toast.error(result.error || 'Error al agregar el proceso');
+            }
+        } catch (error) {
+            toast.error('Error al conectar con el servidor');
+        } finally {
+            setAddingToMissions(null);
+        }
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={cn(
+                "p-4 rounded-xl border transition-all",
+                isMatch && isActionable
+                    ? "bg-green-500/10 border-green-500/50 hover:border-green-500/70 shadow-lg shadow-green-500/10"
+                    : "bg-white/5 border-white/10 hover:border-primary/30",
+                !isActionable && "opacity-60 grayscale-[0.5]"
+            )}
+        >
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                        "px-2 py-1 rounded text-[10px] font-medium border uppercase",
+                        isActionable
+                            ? "bg-green-500/10 text-green-400 border-green-500/20"
+                            : "bg-red-500/10 text-red-400 border-red-500/20 shadow-glow-red"
+                    )}>
+                        {isActionable ? proc.fase : (matchAnalysis?.advice?.includes('ADJUDICADO') || proc.fase?.includes('Adjudicado') || proc.estado_del_proceso?.includes('Adjudicado') ? 'ADJUDICADO' : 'CERRADO')}
+                    </span>
+                    {!isCorporate && (
+                        <span className="px-2 py-1 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                            PERSONA NATURAL
+                        </span>
+                    )}
+                    {isMatch && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-500/40">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Compatible {matchScore}%</span>
+                        </div>
+                    )}
+                    {matchAnalysis?.isAIPowered && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                            <span>✨ IA</span>
+                        </div>
+                    )}
+                </div>
+                <div className="text-right">
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-semibold">
+                        <Calendar className="w-3 h-3 text-primary" />
+                        <span>Publicado</span>
+                    </div>
+                    <span className="text-xs text-foreground font-medium">
+                        {new Date(proc.fecha_de_publicacion_del).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                </div>
+            </div>
+            <h4 className="text-sm font-medium text-foreground mb-1 line-clamp-2">
+                {proc.descripci_n_del_procedimiento}
+            </h4>
+            <div className="flex items-center gap-2 text-xs text-zinc-400 mb-4">
+                <Building2 className="w-3 h-3 text-primary/70" />
+                <span className="truncate max-w-[200px]">{proc.entidad}</span>
+            </div>
+
+            {/* Expander Trigger */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex items-center justify-between mb-4 px-3 py-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all text-xs font-medium text-zinc-300"
+            >
+                <div className="flex items-center gap-2">
+                    <Info className="w-3.5 h-3.5 text-primary" />
+                    <span>{isExpanded ? "Ocultar detalles técnicos" : "Ver detalles técnicos y cronograma"}</span>
+                </div>
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                    >
+                        {/* Informacion Detallada del Proceso */}
+                        <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-lg bg-black/30 border border-white/5 shadow-inner">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                                    <Info className="w-3 h-3" />
+                                    <span>Fase</span>
+                                </div>
+                                <p className="text-xs text-zinc-200 font-medium">{proc.fase || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                                    <ShieldCheck className="w-3 h-3" />
+                                    <span>Estado</span>
+                                </div>
+                                <p className="text-xs text-zinc-200 font-medium truncate" title={proc.estado_resumen || proc.estado_del_procedimiento}>
+                                    {proc.estado_resumen || proc.estado_del_procedimiento || 'N/A'}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                                    <FileText className="w-3 h-3" />
+                                    <span>Tipo Contrato</span>
+                                </div>
+                                <p className="text-xs text-zinc-200 font-medium truncate">{proc.tipo_de_contrato || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                                    <Timer className="w-3 h-3" />
+                                    <span>Duración</span>
+                                </div>
+                                <p className="text-xs text-zinc-200 font-medium">
+                                    {proc.duracion ? `${proc.duracion} ${proc.unidad_de_duracion || ''}` : 'N/A'}
+                                </p>
+                            </div>
+                            <div className="col-span-2 space-y-1 pt-1 border-t border-white/5">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                                    <span>Justificación</span>
+                                </div>
+                                <p className="text-[11px] text-zinc-400 leading-tight italic line-clamp-2">
+                                    {proc.justificaci_n_modalidad_de || 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Cronograma / Hitos */}
+                        <div className="mb-4 space-y-2">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
+                                <GanttChartSquare className="w-4 h-4 text-primary" />
+                                <span>Cronograma del Proceso</span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
+                                {proc.fecha_de_recepcion_de_respuestas && (
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="text-zinc-400">Cierre de ofertas:</span>
+                                        <span className="text-zinc-200 font-medium">
+                                            {new Date(proc.fecha_de_recepcion_de_respuestas).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                )}
+                                {proc.fecha_adjudicacion && (
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="text-zinc-400">Adjudicación:</span>
+                                        <span className="text-zinc-200 font-medium">
+                                            {new Date(proc.fecha_adjudicacion).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-zinc-400">Plazo ejecución:</span>
+                                    <span className="text-zinc-200 font-medium">
+                                        {proc.duracion ? `${proc.duracion} ${proc.unidad_de_duracion || ''}` : 'Ver pliegos'}
+                                    </span>
+                                </div>
+                                {!proc.fecha_adjudicacion && (
+                                    <div className="flex items-center justify-between text-[11px] opacity-70 italic">
+                                        <span className="text-zinc-500">Estimado Firma:</span>
+                                        <span className="text-zinc-500">
+                                            {new Date(new Date(proc.fecha_de_publicacion_del).getTime() + (30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Match Analysis Details (Always visible if match) */}
+            {matchAnalysis && (
+                <>
+                    {/* Deliverables Section */}
+                    <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-primary" />
+                            Entregables / Actividades
+                        </h5>
+                        <div className="flex flex-wrap gap-1.5">
+                            {getSuggestedDeliverables(proc).slice(0, 4).map((del, idx) => (
+                                <span key={idx} className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
+                                    {del}
+                                </span>
+                            ))}
+                            {getSuggestedDeliverables(proc).length > 4 && (
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 text-muted-foreground border border-white/10">
+                                    +{getSuggestedDeliverables(proc).length - 4} más
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Reasons for Match */}
+                    {matchAnalysis.reasons.length > 0 && (
+                        <div className="mb-3 p-2 rounded bg-green-500/5 border border-green-500/20">
+                            <p className="text-[10px] font-medium text-green-400 mb-1">Por qué es compatible:</p>
+                            <ul className="space-y-0.5">
+                                {matchAnalysis.reasons.slice(0, 2).map((reason: string, idx: number) => (
+                                    <li key={idx} className="text-[10px] text-green-300/80 flex items-start gap-1">
+                                        <span className="text-green-500 mt-0.5">•</span>
+                                        <span className="line-clamp-1">{reason}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {/* Strategic Advice section */}
+                    {matchAnalysis.advice && (
+                        <div className="mb-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-start gap-3 shadow-sm">
+                            <div className="mt-0.5 p-1 rounded bg-indigo-500/20">
+                                <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                            </div>
+                            <p className="text-xs text-indigo-200 font-medium leading-relaxed italic">
+                                {matchAnalysis.advice}
+                            </p>
+                        </div>
+                    )}
+                </>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                <div className="flex flex-col gap-1">
+                    <div className="text-xs flex items-center gap-1">
+                        <DollarSign className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">Cuantía:</span>
+                        <span className="text-foreground font-semibold ml-1">{formatCurrency(proc.precio_base)}</span>
+                    </div>
+                    {proc.fecha_de_ultima_publicaci && (
+                        <div className="text-[10px] flex items-center gap-1 text-zinc-500">
+                            <Clock className="w-3 h-3" />
+                            <span>Act: {new Date(proc.fecha_de_ultima_publicaci).toLocaleDateString()}</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => handleAddToMissions(proc)}
+                        disabled={addingToMissions === proc.id_del_proceso}
+                        className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                        title="Agregar a misiones"
+                    >
+                        {addingToMissions === proc.id_del_proceso ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Target className="w-4 h-4" />
+                        )}
+                    </button>
+                    <a
+                        href={typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10 transition-colors"
+                        title="Ver proceso original"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                    </a>
+                    <CompetitorHistoryModal
+                        unspscCodes={extractUNSPSCFromProcess(proc)}
+                        processTitle={proc.descripci_n_del_procedimiento}
+                    />
+                </div>
+            </div>
+        </motion.div>
+    );
+}
 
 export default function MarketAnalysisPage() {
     const router = useRouter();
@@ -133,6 +424,7 @@ export default function MarketAnalysisPage() {
             setProcesses(procs);
             setMetrics(insights);
         } catch (error) {
+            console.error("Search error:", error);
         } finally {
             setLoading(false);
         }
@@ -164,11 +456,6 @@ export default function MarketAnalysisPage() {
         { id: 'suministros', label: 'Suministros' },
         { id: 'consultoria', label: 'Consultoría' }
     ];
-    const formatCurrency = (amount: string) => {
-        const val = parseFloat(amount);
-        if (isNaN(val)) return "$0";
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
-    };
 
     const filteredProcesses = useMemo(() => {
         return processes.filter(proc => {
@@ -208,7 +495,7 @@ export default function MarketAnalysisPage() {
 
                 {/* Search Section */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4 sticky top-0 backdrop-blur-md z-10">
-                    <div className="flex gap-2">
+                    <form onSubmit={onSearch} className="flex gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <input
@@ -217,10 +504,10 @@ export default function MarketAnalysisPage() {
                                 className="w-full bg-black/20 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
                             />
                         </div>
                         <button
+                            type="button"
                             onClick={() => setShowFilters(!showFilters)}
                             className={cn(
                                 "px-4 py-3 rounded-lg border border-white/10 transition-colors flex items-center gap-2",
@@ -230,7 +517,7 @@ export default function MarketAnalysisPage() {
                             <Filter className="w-4 h-4" />
                             <span className="hidden md:inline">Filtros</span>
                         </button>
-                    </div>
+                    </form>
 
                     <div className="flex gap-2 overflow-x-auto pb-2 mt-4 scrollbar-hide">
                         {filters.map((filter) => (
@@ -266,7 +553,6 @@ export default function MarketAnalysisPage() {
                                 />
                             </div>
 
-                            {/* Corporate & Actionable Toggles */}
                             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                                 <div className="flex flex-col">
                                     <span className="text-xs font-medium">Solo Empresas</span>
@@ -334,11 +620,11 @@ export default function MarketAnalysisPage() {
                             <span className="text-xs font-medium text-purple-300">Valor Promedio</span>
                         </div>
                         <p className="text-xl font-bold text-foreground truncate">
-                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency((
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(
                                 filteredProcesses.length > 0
                                     ? filteredProcesses.reduce((acc, p) => acc + parseFloat(p.precio_base || '0'), 0) / filteredProcesses.length
                                     : 0
-                            ).toString())}
+                            )}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">COP</p>
                     </div>
@@ -357,290 +643,18 @@ export default function MarketAnalysisPage() {
                                 <p>Buscando oportunidades...</p>
                             </div>
                         ) : filteredProcesses.length > 0 ? (
-                            filteredProcesses.map((proc, i) => {
-                                const matchAnalysis = (proc as any).matchAnalysis;
-                                const isMatch = matchAnalysis?.isMatch || false;
-                                const matchScore = matchAnalysis?.matchScore || 0;
-                                const isActionable = matchAnalysis?.isActionable !== false;
-                                const isCorporate = matchAnalysis?.isCorporate !== false;
-
-                                return (
-                                    <motion.div
-                                        key={`${proc.id_del_proceso}-${i}`}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        className={cn(
-                                            "p-4 rounded-xl border transition-all",
-                                            isMatch && isActionable
-                                                ? "bg-green-500/10 border-green-500/50 hover:border-green-500/70 shadow-lg shadow-green-500/10"
-                                                : "bg-white/5 border-white/10 hover:border-primary/30",
-                                            !isActionable && "opacity-60 grayscale-[0.5]"
-                                        )}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded text-[10px] font-medium border uppercase",
-                                                    isActionable
-                                                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                                        : "bg-red-500/10 text-red-400 border-red-500/20 shadow-glow-red"
-                                                )}>
-                                                    {isActionable ? proc.fase : (matchAnalysis?.advice?.includes('ADJUDICADO') || proc.fase?.includes('Adjudicado') || proc.estado_del_proceso?.includes('Adjudicado') ? 'ADJUDICADO' : 'CERRADO')}
-                                                </span>
-                                                {!isCorporate && (
-                                                    <span className="px-2 py-1 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                                                        PERSONA NATURAL
-                                                    </span>
-                                                )}
-                                                {isMatch && (
-                                                    <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-500/40">
-                                                        <CheckCircle2 className="w-3 h-3" />
-                                                        <span>Compatible {matchScore}%</span>
-                                                    </div>
-                                                )}
-                                                {matchAnalysis?.isAIPowered && (
-                                                    <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                                                        <span>✨ IA</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-semibold">
-                                                    <Calendar className="w-3 h-3 text-primary" />
-                                                    <span>Publicado</span>
-                                                </div>
-                                                <span className="text-xs text-foreground font-medium">
-                                                    {new Date(proc.fecha_de_publicacion_del).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <h4 className="text-sm font-medium text-foreground mb-1 line-clamp-2">
-                                            {proc.descripci_n_del_procedimiento}
-                                        </h4>
-                                        <div className="flex items-center gap-2 text-xs text-zinc-400 mb-4">
-                                            <Building2 className="w-3 h-3 text-primary/70" />
-                                            <span className="truncate max-w-[200px]">{proc.entidad}</span>
-                                        </div>
-
-                                        {/* Informacion Detallada del Proceso */}
-                                        <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-lg bg-black/30 border border-white/5 shadow-inner">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                                                    <Info className="w-3 h-3" />
-                                                    <span>Fase</span>
-                                                </div>
-                                                <p className="text-xs text-zinc-200 font-medium">{proc.fase || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                                                    <ShieldCheck className="w-3 h-3" />
-                                                    <span>Estado</span>
-                                                </div>
-                                                <p className="text-xs text-zinc-200 font-medium truncate" title={proc.estado_resumen || proc.estado_del_procedimiento}>
-                                                    {proc.estado_resumen || proc.estado_del_procedimiento || 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                                                    <FileText className="w-3 h-3" />
-                                                    <span>Tipo Contrato</span>
-                                                </div>
-                                                <p className="text-xs text-zinc-200 font-medium truncate">{proc.tipo_de_contrato || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                                                    <Timer className="w-3 h-3" />
-                                                    <span>Duración</span>
-                                                </div>
-                                                <p className="text-xs text-zinc-200 font-medium">
-                                                    {proc.duracion ? `${proc.duracion} ${proc.unidad_de_duracion || ''}` : 'N/A'}
-                                                </p>
-                                            </div>
-                                            <div className="col-span-2 space-y-1 pt-1 border-t border-white/5">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
-                                                    <span>Justificación</span>
-                                                </div>
-                                                <p className="text-[11px] text-zinc-400 leading-tight italic line-clamp-2">
-                                                    {proc.justificaci_n_modalidad_de || 'N/A'}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Cronograma / Hitos */}
-                                        <div className="mb-4 space-y-2">
-                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
-                                                <GanttChartSquare className="w-4 h-4 text-primary" />
-                                                <span>Cronograma del Proceso</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-2 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-                                                {proc.fecha_de_recepcion_de_respuestas && (
-                                                    <div className="flex items-center justify-between text-[11px]">
-                                                        <span className="text-zinc-400">Cierre de ofertas:</span>
-                                                        <span className="text-zinc-200 font-medium">
-                                                            {new Date(proc.fecha_de_recepcion_de_respuestas).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {proc.fecha_adjudicacion && (
-                                                    <div className="flex items-center justify-between text-[11px]">
-                                                        <span className="text-zinc-400">Adjudicación:</span>
-                                                        <span className="text-zinc-200 font-medium">
-                                                            {new Date(proc.fecha_adjudicacion).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="text-zinc-400">Plazo ejecución:</span>
-                                                    <span className="text-zinc-200 font-medium">
-                                                        {proc.duracion ? `${proc.duracion} ${proc.unidad_de_duracion || ''}` : 'Ver pliegos'}
-                                                    </span>
-                                                </div>
-                                                {/* Simulated "Firma" based on duration if not present */}
-                                                {!proc.fecha_adjudicacion && (
-                                                    <div className="flex items-center justify-between text-[11px] opacity-70 italic">
-                                                        <span className="text-zinc-500">Estimado Firma:</span>
-                                                        <span className="text-zinc-500">
-                                                            {new Date(new Date(proc.fecha_de_publicacion_del).getTime() + (30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Match Analysis Details */}
-                                        {matchAnalysis && (
-                                            <>
-                                                {/* Deliverables Section */}
-                                                <div className="mb-3">
-                                                    <h5 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
-                                                        <CheckCircle2 className="w-3 h-3 text-primary" />
-                                                        Entregables / Actividades
-                                                    </h5>
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {getSuggestedDeliverables(proc).slice(0, 4).map((del, idx) => (
-                                                            <span key={idx} className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20">
-                                                                {del}
-                                                            </span>
-                                                        ))}
-                                                        {getSuggestedDeliverables(proc).length > 4 && (
-                                                            <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 text-muted-foreground border border-white/10">
-                                                                +{getSuggestedDeliverables(proc).length - 4} más
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Reasons for Match */}
-                                                {matchAnalysis.reasons.length > 0 && (
-                                                    <div className="mb-3 p-2 rounded bg-green-500/5 border border-green-500/20">
-                                                        <p className="text-[10px] font-medium text-green-400 mb-1">Por qué es compatible:</p>
-                                                        <ul className="space-y-0.5">
-                                                            {matchAnalysis.reasons.slice(0, 2).map((reason: string, idx: number) => (
-                                                                <li key={idx} className="text-[10px] text-green-300/80 flex items-start gap-1">
-                                                                    <span className="text-green-500 mt-0.5">•</span>
-                                                                    <span className="line-clamp-1">{reason}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-
-                                                {/* Warnings / Reasons for Non-Match */}
-                                                {matchAnalysis.warnings.length > 0 && (
-                                                    <div className={cn(
-                                                        "mb-3 p-2 rounded border",
-                                                        isMatch ? "bg-yellow-500/5 border-yellow-500/20" : "bg-red-500/5 border-red-500/20"
-                                                    )}>
-                                                        <p className={cn(
-                                                            "text-[10px] font-medium mb-1",
-                                                            isMatch ? "text-yellow-400" : "text-red-400"
-                                                        )}>
-                                                            {isMatch ? "Observaciones:" : "Factores de no-match:"}
-                                                        </p>
-                                                        <ul className="space-y-0.5">
-                                                            {matchAnalysis.warnings.map((warning: string, idx: number) => (
-                                                                <li key={idx} className={cn(
-                                                                    "text-[10px] flex items-start gap-1",
-                                                                    isMatch ? "text-yellow-300/80" : "text-red-300/80"
-                                                                )}>
-                                                                    <span className={isMatch ? "text-yellow-500" : "text-red-500"}>•</span>
-                                                                    <span>{warning}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                                {/* Strategic Advice section */}
-                                                {matchAnalysis.advice && (
-                                                    <div className="mb-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-start gap-3 shadow-sm">
-                                                        <div className="mt-0.5 p-1 rounded bg-indigo-500/20">
-                                                            <Bot className="w-3.5 h-3.5 text-indigo-400" />
-                                                        </div>
-                                                        <p className="text-xs text-indigo-200 font-medium leading-relaxed italic">
-                                                            {matchAnalysis.advice}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-
-                                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="text-xs flex items-center gap-1">
-                                                    <DollarSign className="w-3 h-3 text-muted-foreground" />
-                                                    <span className="text-muted-foreground">Cuantía:</span>
-                                                    <span className="text-foreground font-semibold ml-1">{formatCurrency(proc.precio_base)}</span>
-                                                </div>
-                                                {proc.fecha_de_ultima_publicaci && (
-                                                    <div className="text-[10px] flex items-center gap-1 text-zinc-500">
-                                                        <Clock className="w-3 h-3" />
-                                                        <span>Act: {new Date(proc.fecha_de_ultima_publicaci).toLocaleDateString()}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        const url = typeof proc.urlproceso === 'object' ? proc.urlproceso.url : proc.urlproceso;
-                                                        window.open(url, '_blank');
-                                                    }}
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 transition-colors"
-                                                >
-                                                    <ExternalLink className="w-3 h-3" />
-                                                    <span>SECOP</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        const params = new URLSearchParams({
-                                                            name: proc.descripci_n_del_procedimiento,
-                                                            tenderId: proc.id_del_proceso || ''
-                                                        });
-                                                        router.push(`/dashboard/missions/new?${params.toString()}`);
-                                                    }}
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/30 rounded-lg hover:bg-primary/20 transition-colors"
-                                                >
-                                                    <Target className="w-3 h-3" />
-                                                    <span>Aplicar</span>
-                                                </button>
-                                                <CompetitorHistoryModal
-                                                    unspscCodes={extractUNSPSCFromProcess(proc)}
-                                                    processTitle={proc.descripci_n_del_procedimiento}
-                                                />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })
+                            filteredProcesses.map((proc, i) => (
+                                <ProcessCard key={`${proc.id_del_proceso}-${i}`} proc={proc as any} index={i} />
+                            ))
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">
-                                No se encontraron procesos recientes.
+                            <div className="text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                <p className="text-muted-foreground">No se encontraron procesos para estos criterios.</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* BI Insights Placeholder (Still mock for now as it requires complex analysis) */}
+                {/* BI Insights Placeholder */}
                 <div className="p-5 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10">
                     <div className="flex items-center gap-2 mb-3">
                         <Users className="w-4 h-4 text-primary" />
@@ -662,6 +676,6 @@ export default function MarketAnalysisPage() {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }
