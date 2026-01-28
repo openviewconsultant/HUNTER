@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, FileText, Layout, Plus, Settings, AlertCircle } fr
 import BoardView from "./board-view";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 async function getProjectDetails(id: string) {
     const supabase = await createClient();
@@ -107,30 +108,54 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                                 <CardDescription>Comparativa automática: Tu Perfil vs Pliego</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="rounded-lg border p-4 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900">
-                                    <div className="flex items-start gap-3">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                        <div>
-                                            <h4 className="font-semibold text-green-900 dark:text-green-400">Capacidad Financiera</h4>
-                                            <p className="text-sm text-green-800 dark:text-green-300">Cumples con el K de Contratación y Liquidez requeridos.</p>
+                                {project.ai_analysis?.gap_analysis ? (
+                                    (project.ai_analysis.gap_analysis as any[]).map((gap, index) => (
+                                        <div
+                                            key={index}
+                                            className={cn(
+                                                "rounded-lg border p-4",
+                                                gap.status === 'success' ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900" :
+                                                    gap.status === 'warning' ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900" :
+                                                        "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                {gap.status === 'success' ? (
+                                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                                ) : (
+                                                    <AlertCircle className={cn("h-5 w-5", gap.status === 'warning' ? "text-yellow-600" : "text-red-600")} />
+                                                )}
+                                                <div>
+                                                    <h4 className={cn(
+                                                        "font-semibold",
+                                                        gap.status === 'success' ? "text-green-900 dark:text-green-400" :
+                                                            gap.status === 'warning' ? "text-yellow-900 dark:text-yellow-400" :
+                                                                "text-red-900 dark:text-red-400"
+                                                    )}>
+                                                        {gap.category}: {gap.title}
+                                                    </h4>
+                                                    <p className={cn(
+                                                        "text-sm",
+                                                        gap.status === 'success' ? "text-green-800 dark:text-green-300" :
+                                                            gap.status === 'warning' ? "text-yellow-800 dark:text-yellow-300" :
+                                                                "text-red-800 dark:text-red-300"
+                                                    )}>
+                                                        {gap.message}
+                                                    </p>
+                                                    {gap.recommendation && (
+                                                        <p className="text-xs font-medium mt-2 opacity-80">
+                                                            💡 Recomendación: {gap.recommendation}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground italic">
+                                        No hay análisis disponible. Sincroniza con SECOP para generar uno.
                                     </div>
-                                </div>
-
-                                <div className="rounded-lg border p-4 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900">
-                                    <div className="flex items-start gap-3">
-                                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                                        <div>
-                                            <h4 className="font-semibold text-yellow-900 dark:text-yellow-400">Experiencia Específica</h4>
-                                            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                                                Falta 1 contrato de obra civil &gt; 500 SMMLV.
-                                                <br />
-                                                <span className="font-medium mt-1 block">Recomendación IA:</span>
-                                                Revisar consorcio con empresa aliada "Constructora X".
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -141,14 +166,27 @@ export default async function MissionDetailPage({ params }: { params: Promise<{ 
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between text-sm border-b pb-2">
-                                        <span>Cronograma Ajustado</span>
-                                        <Badge variant="destructive">Alto</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between text-sm border-b pb-2">
-                                        <span>Anticipo</span>
-                                        <Badge variant="secondary">Bajo</Badge>
-                                    </div>
+                                    {project.ai_analysis?.risks ? (
+                                        (project.ai_analysis.risks as any[]).map((risk, index) => (
+                                            <div key={index} className="flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="font-medium">{risk.title}</span>
+                                                    <Badge variant={
+                                                        risk.level === 'Alto' ? 'destructive' :
+                                                            risk.level === 'Medio' ? 'default' :
+                                                                'secondary'
+                                                    }>
+                                                        {risk.level}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">{risk.description}</p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8 text-muted-foreground italic">
+                                            No se han detectado riesgos.
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

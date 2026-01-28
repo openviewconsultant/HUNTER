@@ -6,6 +6,7 @@ import { getProcessSchedule, getProcessDocuments } from "@/lib/socrata";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
 import { extractTextFromPdfUrl } from "@/lib/pdf";
+import { getCompanyData, getCompanyContracts } from "@/lib/company-data";
 
 export async function getProjects() {
     const supabase = await createClient();
@@ -283,19 +284,29 @@ export async function syncProjectWithSecop(projectId: string) {
 
         if (pError || !project) return { error: "Proyecto no encontrado" };
         const secopId = project.tender?.secop_id || (project as any).secop_process_id;
-        if (!secopId) return { error: "Este proyecto no tiene vinculada una licitación de SECOP (falta ID de proceso)" };
+        // if (!secopId) return { error: "Este proyecto no tiene vinculada una licitación de SECOP (falta ID de proceso)" };
 
-        // 2. Fetch data from SECOP
-        const [schedule, documents] = await Promise.all([
-            getProcessSchedule(secopId),
-            getProcessDocuments(secopId)
-        ]);
-
-        if (schedule.length === 0 && documents.length === 0) {
-            return { error: "No se encontraron datos reales en SECOP para este proceso." };
+        // 2. Fetch data from SECOP if available
+        let schedule: any[] = [];
+        let documents: any[] = [];
+        if (secopId) {
+            const [s, d] = await Promise.all([
+                getProcessSchedule(secopId),
+                getProcessDocuments(secopId)
+            ]);
+            schedule = s;
+            documents = d;
         }
 
-        // 3. fetch current stages
+        // 3. Fetch Company Profile Data for Real Analysis
+        const [companyData, companyContracts] = await Promise.all([
+            getCompanyData(),
+            getCompanyContracts()
+        ]);
+
+        if (!companyData) return { error: "Perfil de empresa no encontrado para el análisis" };
+
+        // 4. fetch current stages
         const { data: stages } = await supabase
             .from('project_stages')
             .select('*')
@@ -332,66 +343,99 @@ export async function syncProjectWithSecop(projectId: string) {
 
         const validContents = docContents.filter((c): c is { name: string, content: string } => c !== null && c.content.length > 0);
 
-        // 5. Use AI to categorize and map data
+        // 6. Use AI to categorize tasks and generate GAP ANALYSIS
         const apiKey = process.env.GEMINI_API_KEY;
         const genAI = new GoogleGenerativeAI(apiKey!);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
 
         const prompt = `
-    Como experto en contratación pública en Colombia y analista de licitaciones, analiza la siguiente información de SECOP II.
-    Tu objetivo es extraer REQUERIMIENTOS REALES (obligaciones, perfiles técnicos, indicadores financieros) que el contratista debe cumplir.
+    Como experto en contratación pública en Colombia y analista senior de riesgos y licitaciones, realiza un análisis profundo.
+    Tu tarea es generar:
+    1. Una lista de TAREAS y ENTREGABLES organizada por ETAPAS.
+    2. Un ANÁLISIS DE BRECHAS (GAP Analysis) comparando el perfil de la empresa con los requisitos del proceso.
+    3. Una MATRIZ DE RIESGOS específica.
+
+    PERFIL DE LA EMPRESA (Tus Datos Reales):
+    - Razon Social: ${companyData.company_name}
+    - Indicadores: ${JSON.stringify(companyData.financial_indicators)}
+    - UNSPSC: ${JSON.stringify(companyData.unspsc_codes)}
+    - Experiencia Resumen: ${JSON.stringify(companyData.experience_summary)}
+    - Contratos Registrados: ${JSON.stringify(companyContracts.map(c => ({ objeto: c.description, valor: c.contract_value })))}
+
+    INFORMACIÓN DE LA LICITACIÓN (SECOP II):
+    - Título: ${project.name}
+    - Cronograma: ${JSON.stringify(schedule)}
+    - Documentos SECOP: ${JSON.stringify(documents.map((d: any) => d.nombre_del_documento))}
     
-    INFORMACIÓN DE SECOP:
-    - Cronograma (Hitos): ${JSON.stringify(schedule)}
-    - Documentos registrados: ${JSON.stringify(documents.map((d: any) => d.nombre_del_documento))}
-    
-    CONTENIDO EXTRAÍDO DE DOCUMENTOS CLAVE:
+    CONTENIDO DE DOCUMENTOS CLAVE:
     ${validContents.map(c => `--- DOCUMENTO: ${c.name} ---\n${c.content}\n`).join('\n')}
     
-    ETAPAS DISPONIBLES (Project Stages):
+    ETAPAS DEL PROYECTO:
     ${stages.map(s => `- ID: ${s.id}, Nombre: ${s.name}`).join('\n')}
     
-    REGLAS DE EXTRACCIÓN:
-    1. No inventes datos. Si el contenido del documento está disponible, úsalo para extraer obligaciones específicas (ej. "Entregar informe mensual", "Contar con ingeniero residente", "Póliza de cumplimiento del 20%").
-    2. Identifica hitos del cronograma y conviértelos en tareas (ej. "Presentación de Oferta", "Audiencia de Adjudicación").
-    3. Categoriza cada tarea en uno de los IDs de etapa proporcionados arriba. Use "Iniciación" para documentos legales y financieros previos, y "Ejecución/Planificación" para obligaciones del contrato.
-    4. Prioriza requerimientos CRITICAL (pólizas, requisitos habilitantes) y HIGH (obligaciones principales).
-    5. Para los hitos del cronograma, usa la fecha proporcionada en formato YYYY-MM-DD.
-    
-    RESPONDE EXCLUSIVAMENTE CON UN JSON ARRAY:
-    [
-      {
-        "stage_id": "ID_DE_LA_ETAPA",
-        "title": "Nombre de la tarea/entregable",
-        "description": "Breve descripción detallada basada en el documento",
-        "priority": "HIGH" | "MEDIUM" | "CRITICAL",
-        "due_date": "YYYY-MM-DD",
-        "requirement_type": "legal" | "technical" | "financial"
-      }
-    ]
+    REGLAS DE ORO:
+    1. No inventes. Si no hay contenido de documentos, basa el Gap Analysis en los indicadores financieros y códigos UNSPSC vs el valor del proceso.
+    2. Gap Analysis: Debes comparar CADA indicador financiero (Liquidez, Endeudamiento, K) y experiencia ( UNSPSC) con lo que SECOP exige.
+    3. Responde estrictamente en JSON con la siguiente estructura:
+    {
+      "tasks": [
+        {
+          "stage_id": "string",
+          "title": "string",
+          "description": "string",
+          "priority": "HIGH" | "MEDIUM" | "CRITICAL",
+          "due_date": "YYYY-MM-DD",
+          "requirement_type": "legal" | "technical" | "financial"
+        }
+      ],
+      "gap_analysis": [
+        {
+          "category": "Capacidad Financiera" | "Experiencia Específica" | "Requisitos Habilitantes",
+          "status": "success" | "warning" | "error",
+          "title": "string",
+          "message": "Detalle real de la comparación",
+          "recommendation": "Acción concreta para mitigar el gap"
+        }
+      ],
+      "risks": [
+        {
+          "title": "string",
+          "level": "Bajo" | "Medio" | "Alto",
+          "description": "Basado en clausulas reales de riesgo detectadas"
+        }
+      ]
+    }
     `;
 
         const result = await model.generateContent(prompt);
         const aiResponse = result.response.text();
-        console.log("SECOP AI RAW Response Size:", aiResponse.length);
+        console.log("SECOP FULL ANALYSIS RAW Response Size:", aiResponse.length);
 
-        let newTasks;
+        let fullAnalysis;
         try {
             const jsonStr = aiResponse.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
-            newTasks = JSON.parse(jsonStr);
+            fullAnalysis = JSON.parse(jsonStr);
         } catch (parseError) {
             console.error("Failed to parse AI response as JSON:", aiResponse);
             return { error: "La IA generó un formato inválido. Por favor intenta de nuevo." };
         }
 
-        // 5. Clean old auto-generated requirements (optional, but requested by 'real data' context)
+        const { tasks: newTasks, gap_analysis, risks } = fullAnalysis;
+
+        // 7. Save Analysis to Project
+        await supabase
+            .from('projects')
+            .update({ ai_analysis: { gap_analysis, risks } })
+            .eq('id', projectId);
+
+        // 8. Clean old auto-generated requirements
         await supabase
             .from('project_tasks')
             .delete()
             .eq('project_id', projectId)
             .eq('is_requirement', true);
 
-        // 6. Insert new tasks
+        // 9. Insert new tasks
         const tasksToInsert = newTasks.map((t: any) => ({
             ...t,
             project_id: projectId,
