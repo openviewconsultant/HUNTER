@@ -192,12 +192,6 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                                 <span>Cronograma del Proceso</span>
                             </div>
                             <div className="grid grid-cols-1 gap-2 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-                                {loadingSchedule && (
-                                    <div className="flex items-center gap-2 py-2 text-[10px] text-zinc-500 italic">
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                        <span>Cargando cronograma oficial...</span>
-                                    </div>
-                                )}
 
                                 {/* Publication Date */}
                                 {(scheduleSummary?.publicationDate || proc.fecha_de_publicacion_del) && (
