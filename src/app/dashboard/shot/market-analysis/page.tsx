@@ -216,6 +216,18 @@ function ProcessCard({ proc, index }: { proc: SecopProcess & { matchAnalysis?: a
                                         <span>{reason}</span>
                                     </li>
                                 ))}
+                                {matchAnalysis.topCompetitors && matchAnalysis.topCompetitors.length > 0 && (
+                                    <li className="pt-2 mt-2 border-t border-green-500/10">
+                                        <p className="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-1.5">Competidores Históricos en este sector</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {matchAnalysis.topCompetitors.map((comp: string, i: number) => (
+                                                <span key={i} className="px-2 py-1 rounded-md bg-purple-500/5 text-purple-700 dark:text-purple-300 border border-purple-500/10 text-[9px] font-black uppercase tracking-tight">
+                                                    {comp}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </li>
+                                )}
                             </ul>
                         </div>
                     )}

@@ -4,6 +4,7 @@ import { getCompanyData, getCompanyContracts, getExperienceByUNSPSC, getContract
 import { createClient } from "@/lib/supabase/server";
 import { searchSecopProcesses, getMarketMetrics, searchOpportunitiesByUNSPSC, SecopProcess } from "@/lib/socrata";
 import { classifyProcessesAI } from "./ai-actions";
+import { getHistoricalContracts, CompetitorInfo } from "./competitor-actions";
 
 export async function getMarketTrends() {
     const company = await getCompanyData();
@@ -228,17 +229,28 @@ export async function searchOpportunitiesByCompany() {
         return [];
     }
 
-    // Increased limit to 150
+    // 2. Search processes by UNSPSC (increased limit)
     const processes = await searchOpportunitiesByUNSPSC(company.unspsc_codes, 150);
 
-    // If no company data, return empty list
-    if (!company) return [];
+    // 3. IDENTIFY TOP COMPETITORS for these sectors
+    // We take the first few codes to avoid massive overhead, or we can batch them
+    const topCodes = company.unspsc_codes.slice(0, 5);
+    const historicalCompetitors = await getHistoricalContracts(topCodes);
 
-    // AI Classification in batches
+    // Group competitors to see who is the most active
+    const competitorStats = historicalCompetitors.reduce((acc: Record<string, number>, curr) => {
+        acc[curr.name] = (acc[curr.name] || 0) + 1;
+        return acc;
+    }, {});
+
+    const topCompetitorNames = Object.entries(competitorStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([name]) => name);
+
+    // 4. AI Classification and Match Analysis
     const BATCH_SIZE = 20;
     const aiClassifications: any[] = [];
-
-    // Analyze first 60 for high precision
     const processesToAnalyze = processes.slice(0, 60);
 
     for (let i = 0; i < processesToAnalyze.length; i += BATCH_SIZE) {
@@ -251,20 +263,28 @@ export async function searchOpportunitiesByCompany() {
         aiClassifications.push(...classifiedBatch);
     }
 
-    // Add match analysis just like in searchMarketOpportunities
     const { analyzeTenderMatch } = await import('./match-analyzer');
-
-    // Optimization: Fetch contracts once
     const contracts = await getCompanyContracts();
 
     const processesWithAnalysis = await Promise.all(
         processes.map(async (process) => {
             try {
                 const aiOverride = aiClassifications.find(c => c.id === process.id_del_proceso);
+                // Also pass competitor info to analyzeTenderMatch
                 const matchAnalysis = await analyzeTenderMatch(process, company, contracts, aiOverride);
 
-                // Ensure the object is serializable (plain object, no functions)
-                const serializedAnalysis = {
+                // Add competitor presence logic
+                const processUNSPSC = (process as any).codigo_principal_de_categoria || '';
+                const processCategory = processUNSPSC.slice(0, 4);
+
+                // Check if any top competitor has won in this category
+                const relevantCompetitors = historicalCompetitors.filter(c =>
+                    (c as any).unspscCode?.startsWith(processCategory)
+                );
+
+                const uniqueCompetitors = Array.from(new Set(relevantCompetitors.map(c => c.name))).slice(0, 3);
+
+                const serializedAnalysis: any = {
                     isMatch: matchAnalysis.isMatch,
                     matchScore: matchAnalysis.matchScore,
                     reasons: [...matchAnalysis.reasons],
@@ -272,8 +292,14 @@ export async function searchOpportunitiesByCompany() {
                     advice: matchAnalysis.advice,
                     isCorporate: matchAnalysis.isCorporate,
                     isActionable: matchAnalysis.isActionable,
-                    isAIPowered: !!aiOverride
+                    isAIPowered: !!aiOverride,
+                    topCompetitors: uniqueCompetitors // NEW FIELD
                 };
+
+                // Add competitor reason if applicable
+                if (uniqueCompetitors.length > 0) {
+                    serializedAnalysis.reasons.push(`Competencia: Sector disputado por ${uniqueCompetitors[0]}${uniqueCompetitors.length > 1 ? ` y ${uniqueCompetitors.length - 1} más` : ''}`);
+                }
 
                 return {
                     ...process,

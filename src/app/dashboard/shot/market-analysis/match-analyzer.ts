@@ -15,6 +15,7 @@ export interface TenderMatchAnalysis {
     advice?: string;
     isCorporate: boolean;
     isActionable: boolean;
+    topCompetitors?: string[];
 }
 
 /**
