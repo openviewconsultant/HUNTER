@@ -41,13 +41,18 @@ export async function searchSecopProcesses(query: string, limit: number = 20, fi
         // Construct where clause
         let whereClause = `fecha_de_publicacion_del >= '${dateStr}'`;
 
-        // Filter by Status/Phase
+        // Filter by Status/Phase - STRENGTHENED VERSION
+        const activePhases = "'Presentación de oferta'";
+        const closedStates = "'Adjudicado', 'Celebrado', 'Liquidado', 'Finalizado'";
+        const activeStates = "'En curso', 'Publicado', 'Publicación'";
+
         if (filters?.status === 'active' || !filters?.status) {
-            whereClause += ` AND fase = 'Presentación de oferta'`;
+            // Must be in active phase AND NOT in a closed state
+            whereClause += ` AND fase = ${activePhases}`;
+            whereClause += ` AND estado_del_proceso NOT IN (${closedStates})`;
         } else if (filters?.status === 'awarded') {
-            whereClause += ` AND (fase = 'Adjudicado' OR fase = 'Celebrado')`;
+            whereClause += ` AND (fase IN ('Adjudicado', 'Celebrado') OR estado_del_proceso IN ('Adjudicado', 'Celebrado'))`;
         }
-        // If 'all', we don't restrict phase
 
         // Filters for Amount (Cuantía)
         // We handle this partially in API if possible, but safer in post-processing for mixed string/number types
@@ -122,11 +127,15 @@ export async function getMarketMetrics(query: string, filters?: MarketFilters) {
 
         let whereClause = `fecha_de_publicacion_del >= '${dateStr}'`;
 
-        // Apply filters
+        // Apply filters - STRENGTHENED VERSION
+        const activePhases = "'Presentación de oferta'";
+        const closedStates = "'Adjudicado', 'Celebrado', 'Liquidado', 'Finalizado'";
+
         if (filters?.status === 'active' || !filters?.status) {
-            whereClause += ` AND fase = 'Presentación de oferta'`;
+            whereClause += ` AND fase = ${activePhases}`;
+            whereClause += ` AND estado_del_proceso NOT IN (${closedStates})`;
         } else if (filters?.status === 'awarded') {
-            whereClause += ` AND (fase = 'Adjudicado' OR fase = 'Celebrado')`;
+            whereClause += ` AND (fase IN ('Adjudicado', 'Celebrado') OR estado_del_proceso IN ('Adjudicado', 'Celebrado'))`;
         }
 
         if (filters?.minAmount) {

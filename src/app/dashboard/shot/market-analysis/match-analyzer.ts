@@ -90,7 +90,18 @@ export async function analyzeTenderMatch(
     }
 
     matchScore = Math.min(100, matchScore);
-    const isActionable = aiOverride?.isActionable !== undefined ? aiOverride.isActionable : (process.fase === 'Presentación de oferta');
+
+    // Strengthened Actionable detection
+    const closedPhases = ['Adjudicado', 'Celebrado', 'Liquidado', 'Finalizado'];
+    const closedStates = ['Adjudicado', 'Celebrado', 'Liquidado', 'No Adjudicado'];
+
+    const isActuallyClosed =
+        closedPhases.includes(process.fase || '') ||
+        closedStates.includes(process.estado_del_proceso || '');
+
+    const isActionable = aiOverride?.isActionable !== undefined
+        ? aiOverride.isActionable
+        : (process.fase === 'Presentación de oferta' && !isActuallyClosed);
     const isMatch = isCorporate && matchScore >= 60; // Increased threshold and must be corporate
 
     // Strategic AI Advice

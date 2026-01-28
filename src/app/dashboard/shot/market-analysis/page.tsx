@@ -105,6 +105,7 @@ export default function MarketAnalysisPage() {
             const currentFilters = {
                 minAmount: minAmount ? parseFloat(minAmount) : undefined,
                 maxAmount: maxAmount ? parseFloat(maxAmount) : undefined,
+                hideNonActionable // Pass the current state
             };
 
             if (isCompanyFilter) {
@@ -383,9 +384,9 @@ export default function MarketAnalysisPage() {
                                                     "px-2 py-1 rounded text-[10px] font-medium border uppercase",
                                                     isActionable
                                                         ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                        : "bg-red-500/10 text-red-400 border-red-500/20 shadow-glow-red"
                                                 )}>
-                                                    {isActionable ? proc.fase : `FINALIZADO: ${proc.fase}`}
+                                                    {isActionable ? proc.fase : (matchAnalysis?.advice?.includes('ADJUDICADO') || proc.fase?.includes('Adjudicado') || proc.estado_del_proceso?.includes('Adjudicado') ? 'ADJUDICADO' : 'CERRADO')}
                                                 </span>
                                                 {!isCorporate && (
                                                     <span className="px-2 py-1 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">

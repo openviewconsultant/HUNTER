@@ -197,4 +197,16 @@
       0 0 30px rgba(100, 160, 255, 0.3),
       0 4px 6px -1px rgba(0, 0, 0, 0.5);
   }
+
+  .shadow-glow-red {
+    box-shadow:
+      0 0 20px rgba(239, 68, 68, 0.15),
+      0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .shadow-glow-red {
+    box-shadow:
+      0 0 30px rgba(239, 68, 68, 0.3),
+      0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  }
 }

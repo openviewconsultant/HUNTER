@@ -115,8 +115,15 @@ export async function getMarketStats() {
 
 // Market search functions for the search page
 export async function searchMarketOpportunities(query: string, filters?: any) {
-    // Integrate with SECOP API - Increased limit to 150
-    const processes = await searchSecopProcesses(query, 150, filters);
+    // Map UI filters to Socrata filters
+    const socrataFilters = {
+        minAmount: filters?.minAmount,
+        maxAmount: filters?.maxAmount,
+        status: filters?.hideNonActionable ? 'active' : 'all'
+    };
+
+    // Integrate with SECOP API
+    const processes = await searchSecopProcesses(query, 150, socrataFilters as any);
 
     // Get company data for match analysis
     const company = await getCompanyData();
